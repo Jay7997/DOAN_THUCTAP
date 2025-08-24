@@ -101,6 +101,146 @@ Route::post('/api/proxy-wishlist-add', function (\Illuminate\Http\Request $reque
         ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });
 
+// Proxy routes for cart operations to avoid CORS
+// Lấy cookie DathangMabaogia (giỏ hàng) từ API ngoài và trả về JSON chuẩn
+Route::get('/cart/get-cookie', function () {
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get('https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia.asp');
+    $json = $res->json();
+    $cartCookie = null;
+    if (is_array($json)) {
+        foreach ($json as $item) {
+            if (isset($item['DathangMabaogia'])) {
+                $cartCookie = $item['DathangMabaogia'];
+                break;
+            }
+        }
+    }
+    return response()->json(['DathangMabaogia' => $cartCookie])
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+});
+
+// Lấy giỏ hàng hiện tại (dựa trên cookie DathangMabaogia nếu chưa đăng nhập)
+Route::get('/api/proxy-cart-current', function (\Illuminate\Http\Request $request) {
+    $cartCookie = $request->input('cartCookie') ?: $request->cookie('DathangMabaogia');
+    $response = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->withCookies([
+            'DathangMabaogia' => $cartCookie,
+        ], 'demodienmay.125.atoz.vn')
+        ->get('https://demodienmay.125.atoz.vn/ww1/giohanghientai.asp');
+
+    return response($response->body(), $response->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+});
+
+// Thêm vào giỏ hàng (đăng nhập hoặc chưa đăng nhập)
+Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) {
+    $productId = $request->input('productId');
+    $cartCookie = $request->input('cartCookie');
+    $userid = $request->input('userid');
+    $pass = $request->input('pass');
+
+    if ($userid && $pass) {
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.addtocart.asp?userid={$userid}&pass={$pass}&id={$productId}";
+        $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+    } else {
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/addgiohang.asp?IDPart={$productId}&id={$cartCookie}";
+        $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+    }
+
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+});
+
+// Xóa khỏi giỏ hàng (đăng nhập hoặc chưa đăng nhập)
+Route::post('/api/proxy-cart-remove', function (\Illuminate\Http\Request $request) {
+    $productId = $request->input('productId');
+    $cartCookie = $request->input('cartCookie');
+    $userid = $request->input('userid');
+    $pass = $request->input('pass');
+
+    if ($userid && $pass) {
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/remove.listcart.asp?userid={$userid}&pass={$pass}&id={$productId}";
+    } else {
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/removegiohang.asp?IDPart={$productId}&id={$cartCookie}";
+    }
+
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+    $responseBody = $res->body();
+
+    // Chuẩn hóa phản hồi về JSON nếu endpoint trả về JS object
+    $data = [
+        'thongbao' => 'Đã xóa khỏi giỏ hàng',
+    ];
+
+    $pattern = '/var info = \{([^}]*)\};/';
+    if (preg_match($pattern, $responseBody, $matches)) {
+        $jsContent = $matches[1];
+        if (preg_match('/thongbao:\s*[\'\"]([^\'\"]*)[\'\"]/',$jsContent,$msgMatch)) {
+            $data['thongbao'] = strip_tags($msgMatch[1]);
+        }
+        if (preg_match('/sl:\s*(\d+)/',$jsContent,$slMatch)) {
+            $data['sl'] = (int)$slMatch[1];
+        }
+        if (preg_match('/tongtien:\s*[\'\"]([^\'\"]*)[\'\"]/',$jsContent,$totalMatch)) {
+            $data['tongtien'] = $totalMatch[1];
+        }
+    }
+
+    return response()->json($data)
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+});
+
+// Cập nhật số lượng trong giỏ hàng (đăng nhập hoặc chưa đăng nhập)
+Route::post('/api/proxy-cart-update', function (\Illuminate\Http\Request $request) {
+    $productId = $request->input('productId');
+    $quantity = (int) $request->input('quantity');
+    $cartCookie = $request->input('cartCookie');
+    $userid = $request->input('userid');
+    $pass = $request->input('pass');
+
+    if ($userid && $pass) {
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upcart.asp?userid={$userid}&pass={$pass}&id={$productId}&id2={$quantity}";
+    } else {
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upgiohang.asp?IDPart={$productId}&id={$cartCookie}&id1={$quantity}";
+    }
+
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+    $responseBody = $res->body();
+
+    $data = [
+        'thongbao' => 'Đã cập nhật giỏ hàng',
+    ];
+
+    $pattern = '/var info = \{([^}]*)\};/';
+    if (preg_match($pattern, $responseBody, $matches)) {
+        $jsContent = $matches[1];
+        if (preg_match('/thongbao:\s*[\'\"]([^\'\"]*)[\'\"]/',$jsContent,$msgMatch)) {
+            $data['thongbao'] = strip_tags($msgMatch[1]);
+        }
+        if (preg_match('/sl:\s*(\d+)/',$jsContent,$slMatch)) {
+            $data['sl'] = (int)$slMatch[1];
+        }
+        if (preg_match('/tongtien:\s*[\'\"]([^\'\"]*)[\'\"]/',$jsContent,$totalMatch)) {
+            $data['tongtien'] = $totalMatch[1];
+        }
+    }
+
+    return response()->json($data)
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+});
+
 Route::post('/api/proxy-wishlist-remove', function (\Illuminate\Http\Request $request) {
     $productId = $request->input('productId');
     $wishlistCookie = $request->input('wishlistCookie'); // Lấy cookie từ request
