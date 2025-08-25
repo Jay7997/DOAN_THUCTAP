@@ -269,6 +269,10 @@ $(function () {
                         $(
                             `.btn-add-wishlist[data-id="${productId}"]`
                         ).removeClass("active");
+                        // Ensure page reflects latest server state
+                        setTimeout(() => {
+                            refreshWishlistTable();
+                        }, 500);
                     }
                 });
             } else {

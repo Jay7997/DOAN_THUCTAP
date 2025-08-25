@@ -117,9 +117,28 @@ class WishlistController extends Controller
             }
         }
 
-        // Kiểm tra nếu response chứa thông báo thành công
-        if (stripos($responseBody, 'thành công') !== false || stripos($responseBody, 'đã xóa') !== false) {
-            $success = true;
+        // Kiểm tra lại bằng cách gọi danh sách wishlist và xác nhận item không còn
+        try {
+            $listRes = Http::withOptions(['verify' => false])
+                ->withHeaders(['Cache-Control' => 'no-cache'])
+                ->withCookies([
+                    'WishlistMabaogia' => $cookie,
+                ], 'demodienmay.125.atoz.vn')
+                ->get('https://demodienmay.125.atoz.vn/ww1/wishlisthientai.asp?ts=' . time());
+
+            $listJson = $listRes->json();
+            $stillExists = false;
+            if (!empty($listJson['items'])) {
+                foreach ($listJson['items'] as $item) {
+                    if ((string)($item['id'] ?? '') === (string)$id) {
+                        $stillExists = true;
+                        break;
+                    }
+                }
+            }
+            $success = !$stillExists;
+        } catch (\Throwable $e) {
+            Log::warning('Wishlist remove - verify failed', ['error' => $e->getMessage()]);
         }
 
         Log::info("Wishlist remove - Parsed result", [
