@@ -59,6 +59,8 @@ class AuthController extends Controller
                         Session::put('user_email', $validatedData['email']);
                         Session::put('user_id', $data[0]['user']);
                         Session::put('user_name', $data[0]['tenkh'] ?? $validatedData['email']);
+                        // Lưu plaintext password để gọi các API bên thứ ba yêu cầu userid/pass
+                        Session::put('plain_pass', $validatedData['password']);
 
                         if ($request->expectsJson()) {
                             return response()->json([

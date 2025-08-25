@@ -72,162 +72,175 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Proxy route để lấy cookie WishlistMabaogia từ backend Laravel, tránh lỗi CORS
 Route::get('/api/proxy-cookie', function () {
-    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get('https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia.asp');
-    return response($res->body(), $res->status())
-        ->header('Content-Type', 'application/json')
-        ->header('Access-Control-Allow-Origin', '*')
-        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	$res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get('https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia.asp');
+	return response($res->body(), $res->status())
+		->header('Content-Type', 'application/json')
+		->header('Access-Control-Allow-Origin', '*')
+		->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+		->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });
 
 // Proxy routes for wishlist operations to avoid CORS
 Route::post('/api/proxy-wishlist-add', function (\Illuminate\Http\Request $request) {
-    $productId = $request->input('productId');
-    $wishlistCookie = $request->input('wishlistCookie');
-    $userid = $request->input('userid');
-    $pass = $request->input('pass');
+	$productId = $request->input('productId');
+	$wishlistCookie = $request->input('wishlistCookie');
+	$userid = $request->input('userid');
+	$pass = $request->input('pass');
 
-    if ($userid && $pass) {
-        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.wishlist.asp?userid={$userid}&pass={$pass}&id={$productId}";
-    } else {
-        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/addwishlist.asp?IDPart={$productId}&id={$wishlistCookie}";
-    }
+	if ($userid && $pass) {
+		$apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.wishlist.asp?userid={$userid}&pass={$pass}&id={$productId}";
+	} else {
+		$apiUrl = "https://demodienmay.125.atoz.vn/ww1/addwishlist.asp?IDPart={$productId}&id={$wishlistCookie}";
+	}
 
-    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
-    return response($res->body(), $res->status())
-        ->header('Content-Type', 'application/json')
-        ->header('Access-Control-Allow-Origin', '*')
-        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	$res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+	return response($res->body(), $res->status())
+		->header('Content-Type', 'application/json')
+		->header('Access-Control-Allow-Origin', '*')
+		->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+		->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });
 
 Route::post('/api/proxy-wishlist-remove', function (\Illuminate\Http\Request $request) {
-    $productId = $request->input('productId');
-    $wishlistCookie = $request->input('wishlistCookie'); // Lấy cookie từ request
+	$productId = $request->input('productId');
+	$wishlistCookie = $request->input('wishlistCookie'); // Lấy cookie từ request
+	$userid = $request->input('userid') ?: session('user_email');
+	$pass = $request->input('pass') ?: session('plain_pass');
 
-    // Log để debug
-    Log::info('proxy-wishlist-remove', [
-        'productId' => $productId,
-        'wishlistCookie' => $wishlistCookie
-    ]);
+	// Log để debug
+	Log::info('proxy-wishlist-remove', [
+		'productId' => $productId,
+		'wishlistCookie' => $wishlistCookie,
+		'userid' => $userid ? 'yes' : 'no',
+	]);
 
-    $apiUrl = "https://demodienmay.125.atoz.vn/cart/xoawl.asp?IDPart={$productId}&id={$wishlistCookie}";
+	if ($userid && $pass) {
+		$apiUrl = "https://demodienmay.125.atoz.vn/ww1/remove.listwishlist.asp?userid={$userid}&pass={$pass}&id={$productId}";
+		$res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+		return response($res->body(), $res->status())
+			->header('Content-Type', 'application/json')
+			->header('Access-Control-Allow-Origin', '*')
+			->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+			->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	}
 
-    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
-    $responseBody = $res->body();
+	$apiUrl = "https://demodienmay.125.atoz.vn/ww1/removewishlist.asp?IDPart={$productId}&id={$wishlistCookie}";
 
-    $data = ['thongbao' => 'Đã xóa khỏi wishlist'];
+	$res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+	$responseBody = $res->body();
 
-    $pattern = '/var info = \{([^}]*)\};/';
-    if (preg_match($pattern, $responseBody, $matches)) {
-        $jsContent = $matches[1];
+	$data = ['thongbao' => 'Đã xóa khỏi wishlist'];
 
-        if (preg_match('/thongbao:\s*[\'"]([^\'"]*)[\'"]/', $jsContent, $thongbaoMatch)) {
-            $data['thongbao'] = strip_tags($thongbaoMatch[1]);
-        }
-        if (preg_match('/sl:\s*(\d+)/', $jsContent, $slMatch)) {
-            $data['sl'] = (int)$slMatch[1];
-        }
-        if (preg_match('/tongtien:\s*[\'"]([^\'"]*)[\'"]/', $jsContent, $tongtienMatch)) {
-            $data['tongtien'] = $tongtienMatch[1];
-        }
-    }
+	$pattern = '/var info = \{([^}]*)\};/';
+	if (preg_match($pattern, $responseBody, $matches)) {
+		$jsContent = $matches[1];
 
-    return response()->json($data)
-        ->header('Access-Control-Allow-Origin', '*')
-        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+		if (preg_match('/thongbao:\s*[\'\"]([^\'\"]*)[\'\"]/',$jsContent, $thongbaoMatch)) {
+			$data['thongbao'] = strip_tags($thongbaoMatch[1]);
+		}
+		if (preg_match('/sl:\s*(\d+)/', $jsContent, $slMatch)) {
+			$data['sl'] = (int)$slMatch[1];
+		}
+		if (preg_match('/tongtien:\s*[\'\"]([^\'\"]*)[\'\"]/',$jsContent, $tongtienMatch)) {
+			$data['tongtien'] = $tongtienMatch[1];
+		}
+	}
+
+	return response()->json($data)
+		->header('Access-Control-Allow-Origin', '*')
+		->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+		->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });
 
 // Proxy routes for comment system to avoid CORS
 Route::get('/api/proxy-product-info/{id}', function ($id) {
-    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
-        ->get("https://demochung.125.atoz.vn/ww2/module.sanpham.chitiet.asp?id={$id}");
-    return response($res->body(), $res->status())
-        ->header('Content-Type', 'application/json')
-        ->header('Access-Control-Allow-Origin', '*')
-        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	$res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+		->get("https://demochung.125.atoz.vn/ww2/module.sanpham.chitiet.asp?id={$id}");
+	return response($res->body(), $res->status())
+		->header('Content-Type', 'application/json')
+		->header('Access-Control-Allow-Origin', '*')
+		->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+		->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });
 
 Route::get('/api/proxy-comments/{id}', function ($id) {
-    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
-        ->get("https://demodienmay.125.atoz.vn/ww2/module.sanpham.chitiet.asp?id={$id}");
-    return response($res->body(), $res->status())
-        ->header('Content-Type', 'application/json')
-        ->header('Access-Control-Allow-Origin', '*')
-        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	$res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+		->get("https://demodienmay.125.atoz.vn/ww2/module.sanpham.chitiet.asp?id={$id}");
+	return response($res->body(), $res->status())
+		->header('Content-Type', 'application/json')
+		->header('Access-Control-Allow-Origin', '*')
+		->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+		->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });
 
 // Route OPTIONS cho tất cả proxy endpoint (nếu cần)
 Route::options('/api/{any}', function () {
-    return response('', 200)
-        ->header('Access-Control-Allow-Origin', '*')
-        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	return response('', 200)
+		->header('Access-Control-Allow-Origin', '*')
+		->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+		->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 })->where('any', '.*');
 
 // Test email (chỉ trong development)
 Route::get('/test-email', function () {
-    try {
-        $orderData = [
-            'full_name' => 'Nguyễn Văn A',
-            'email' => 'test@example.com',
-            'sdt' => '0123456789',
-            'address' => '123 Đường ABC, Quận 1, TP.HCM',
-            'payment_method' => 'cod',
-            'total_amount' => 15000000,
-            'order_date' => now(),
-        ];
+	try {
+		$orderData = [
+			'full_name' => 'Nguyễn Văn A',
+			'email' => 'test@example.com',
+			'sdt' => '0123456789',
+			'address' => '123 Đường ABC, Quận 1, TP.HCM',
+			'payment_method' => 'cod',
+			'total_amount' => 15000000,
+			'order_date' => now(),
+		];
 
-        $cartItems = [
-            '60001' => [
-                'tieude' => 'Laptop Gaming MSI',
-                'gia' => 15000000,
-                'quantity' => 1
-            ]
-        ];
+		$cartItems = [
+			'60001' => [
+				'tieude' => 'Laptop Gaming MSI',
+				'gia' => 15000000,
+				'quantity' => 1
+			]
+		];
 
-        $totalAmount = 15000000;
+		$totalAmount = 15000000;
 
-        Mail::to('test@example.com')->send(new \App\Mail\OrderConfirmation($orderData, $cartItems, $totalAmount));
+		Mail::to('test@example.com')->send(new \App\Mail\OrderConfirmation($orderData, $cartItems, $totalAmount));
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Test email sent successfully! Check storage/logs/laravel.log'
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Failed to send test email: ' . $e->getMessage()
-        ]);
-    }
+		return response()->json([
+			'status' => 'success',
+			'message' => 'Test email sent successfully! Check storage/logs/laravel.log'
+		]);
+	} catch (\Exception $e) {
+		return response()->json([
+			'status' => 'error',
+			'message' => 'Failed to send test email: ' . $e->getMessage()
+		]);
+	}
 })->name('test.email');
 
 // Test API đặt hàng (Đã vô hiệu hóa - không còn sử dụng API bên ngoài)
 Route::get('/test-order-api', function () {
-    return response()->json([
-        'status' => 'info',
-        'message' => 'Chức năng này đã được vô hiệu hóa. Hệ thống hiện tại xử lý đơn hàng cục bộ.',
-        'api_response' => null
-    ]);
+	return response()->json([
+		'status' => 'info',
+		'message' => 'Chức năng này đã được vô hiệu hóa. Hệ thống hiện tại xử lý đơn hàng cục bộ.',
+		'api_response' => null
+	]);
 })->name('test.order.api');
 
 // Trang debug đặt hàng
 Route::get('/payment/debug', function () {
-    return view('payment.debug');
+	return view('payment.debug');
 })->name('payment.debug');
 
 
 
 
 Route::get('/api/proxy-binhluan/{id}/{page?}', function ($id, $page = 1) {
-    $apiUrl = "http://demodienmay.125.atoz.vn/ww2/binhluan.pc.asp?id={$id}&txtloai=desc&pageid={$page}";
-    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
-    return response($res->body(), $res->status())
-        ->header('Content-Type', 'application/json')
-        ->header('Access-Control-Allow-Origin', '*');
+	$apiUrl = "http://demodienmay.125.atoz.vn/ww2/binhluan.pc.asp?id={$id}&txtloai=desc&pageid={$page}";
+	$res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+	return response($res->body(), $res->status())
+		->header('Content-Type', 'application/json')
+		->header('Access-Control-Allow-Origin', '*');
 });
 // Route::post('/api/proxy-binhluan/{id}/add', function ($id, \Illuminate\Http\Request $request) {
 //     // Lấy dữ liệu từ request (từ form JS của bạn)
@@ -256,45 +269,45 @@ Route::get('/api/proxy-binhluan/{id}/{page?}', function ($id, $page = 1) {
 
 
 Route::post('/api/proxy-binhluan/{id}/add', function ($id, \Illuminate\Http\Request $request) {
-    $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.binhluan.asp"; // đổi sang endpoint gốc ww1
+	$apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.binhluan.asp"; // đổi sang endpoint gốc ww1
 
-    // Dữ liệu người dùng gửi lên
-    $nameInput = $request->input('nguoidang', '');
-    $contentInput = $request->input('noidungbinhluan', '');
-    $ratingInput = (int)$request->input('rating', 5); // có thể 1–5 hoặc 20–100
+	// Dữ liệu người dùng gửi lên
+	$nameInput = $request->input('nguoidang', '');
+	$contentInput = $request->input('noidungbinhluan', '');
+	$ratingInput = (int)$request->input('rating', 5); // có thể 1–5 hoặc 20–100
 
-    // Chuẩn hóa rating về thang 1–5 cho id2
-    if ($ratingInput > 5) {
-        $ratingInput = max(1, min(5, intval($ratingInput / 20)));
-    }
+	// Chuẩn hóa rating về thang 1–5 cho id2
+	if ($ratingInput > 5) {
+		$ratingInput = max(1, min(5, intval($ratingInput / 20)));
+	}
 
-    // Thông tin gửi lên API gốc
-    $remoteData = [
-        'userid'       => '', // để trống khi chưa đăng nhập
-        'pass'         => '',
-        'id'           => $id, // id sản phẩm
-        'tenkh'        => $nameInput,
-        'txtemail'     => $request->input('txtemail', ''),
-        'txtdienthoai' => $request->input('txtdienthoai', ''),
-        'noidungtxt'   => $contentInput,
-        'id2'          => $ratingInput, // số sao 1–5
-        'id3'          => '/dist/images/user.jpg', // avatar mặc định
-    ];
+	// Thông tin gửi lên API gốc
+	$remoteData = [
+		'userid'       => '', // để trống khi chưa đăng nhập
+		'pass'         => '',
+		'id'           => $id, // id sản phẩm
+		'tenkh'        => $nameInput,
+		'txtemail'     => $request->input('txtemail', ''),
+		'txtdienthoai' => $request->input('txtdienthoai', ''),
+		'noidungtxt'   => $contentInput,
+		'id2'          => $ratingInput, // số sao 1–5
+		'id3'          => '/dist/images/user.jpg', // avatar mặc định
+	];
 
-    // Nếu người dùng đã đăng nhập, thêm userid & pass
-    if (\Illuminate\Support\Facades\Auth::check()) {
-        $user = \Illuminate\Support\Facades\Auth::user();
-        $remoteData['userid'] = $user->name ?? $user->email;
-        $remoteData['pass'] = session('plain_pass', '');
-    }
+	// Nếu người dùng đã đăng nhập, thêm userid & pass
+	if (\Illuminate\Support\Facades\Auth::check()) {
+		$user = \Illuminate\Support\Facades\Auth::user();
+		$remoteData['userid'] = $user->name ?? $user->email;
+		$remoteData['pass'] = session('plain_pass', '');
+	}
 
-    $response = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
-        ->asForm()
-        ->post($apiUrl, $remoteData);
+	$response = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+		->asForm()
+		->post($apiUrl, $remoteData);
 
-    return response($response->body(), $response->status())
-        ->header('Content-Type', 'application/json')
-        ->header('Access-Control-Allow-Origin', '*')
-        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	return response($response->body(), $response->status())
+		->header('Content-Type', 'application/json')
+		->header('Access-Control-Allow-Origin', '*')
+		->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+		->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });

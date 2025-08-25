@@ -37,7 +37,7 @@
                                     🛒 Thêm vào giỏ hàng
                                 </button>
 
-                                <button class="btn btn-outline-danger btn-lg" onclick="toggleWishlist('{{ $product['id'] }}')">
+                                <button id="detail-wishlist-btn" class="btn btn-outline-danger btn-lg" onclick="toggleWishlist('{{ $product['id'] }}')">
                                     🤍 Yêu thích
                                 </button>
                             </div>
@@ -480,34 +480,38 @@
 
     // Hàm toggle wishlist
     function toggleWishlist(productId) {
-        var wishlistBtn = event.target;
+        var button = document.getElementById('detail-wishlist-btn');
+        var isAdding = !button.classList.contains('active');
 
-        $.ajax({
-            url: '/wishlist/toggle',
-            method: 'POST',
-            data: {
-                product_id: productId,
-                _token: $('meta[name="csrf-token"]').attr('content')
+        fetch(`/wishlist/${isAdding ? 'add' : 'remove'}/${productId}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
             },
-            success: function(response) {
-                if (response.success) {
-                    if (response.in_wishlist) {
-                        wishlistBtn.innerHTML = '❤️ Đã yêu thích';
-                        wishlistBtn.classList.remove('btn-outline-danger');
-                        wishlistBtn.classList.add('btn-danger');
-                    } else {
-                        wishlistBtn.innerHTML = '🤍 Yêu thích';
-                        wishlistBtn.classList.remove('btn-danger');
-                        wishlistBtn.classList.add('btn-outline-danger');
-                    }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success !== false) {
+                button.classList.toggle('active');
+                if (button.classList.contains('active')) {
+                    button.innerHTML = '❤️ Đã yêu thích';
+                    button.classList.remove('btn-outline-danger');
+                    button.classList.add('btn-danger');
                 } else {
-                    alert('Có lỗi xảy ra!');
+                    button.innerHTML = '🤍 Yêu thích';
+                    button.classList.remove('btn-danger');
+                    button.classList.add('btn-outline-danger');
                 }
-            },
-            error: function() {
-                alert('Có lỗi xảy ra!');        
+                // Cập nhật badge count
+                fetch('/wishlist/count', { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }})
+                  .then(r => r.json())
+                  .then(c => { if (c.count !== undefined) { const b = document.getElementById('wishlist-count'); if (b) b.textContent = c.count; } });
+            } else {
+                alert('Có lỗi xảy ra khi cập nhật yêu thích');
             }
-        });
+        })
+        .catch(() => alert('Có lỗi xảy ra khi cập nhật yêu thích'));
     }
 </script>
 @endsection
