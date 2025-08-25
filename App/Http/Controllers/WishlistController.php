@@ -5,9 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\ApiCartService;
 
 class WishlistController extends Controller
 {
+    protected $apiCartService;
+
+    public function __construct(ApiCartService $apiCartService)
+    {
+        $this->apiCartService = $apiCartService;
+    }
     // Lấy số WishlistMabaogia từ API ngoài, trả về cho JS
     public function getWishlistCookie()
     {
@@ -178,5 +185,73 @@ class WishlistController extends Controller
             $count = count($json['items']);
         }
         return response()->json(['count' => $count]);
+    }
+
+    // ========== API WISHLIST METHODS THEO YÊU CẦU ==========
+
+    /**
+     * Lấy wishlist hiện tại qua API
+     */
+    public function getCurrentWishlist(Request $request)
+    {
+        $wishlistCookie = $request->cookie('WishlistMabaogia');
+        $wishlist = $this->apiCartService->getCurrentWishlist($wishlistCookie);
+        
+        return response()->json($wishlist);
+    }
+
+    /**
+     * Thêm sản phẩm vào wishlist qua API (tương tự như cart)
+     */
+    public function apiAddToWishlist(Request $request)
+    {
+        $productId = $request->input('productId') ?: $request->input('IDPart');
+        $wishlistCookie = $request->input('wishlistCookie') ?: $request->input('id') ?: $request->cookie('WishlistMabaogia');
+        
+        $userInfo = $this->apiCartService->getCurrentUserInfo();
+        
+        if ($userInfo['authenticated']) {
+            $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.wishlist.asp?userid={$userInfo['userid']}&pass={$userInfo['pass']}&id={$productId}";
+        } else {
+            $apiUrl = "https://demodienmay.125.atoz.vn/ww1/addwishlist.asp?IDPart={$productId}&id={$wishlistCookie}";
+        }
+
+        $response = Http::withOptions(['verify' => false])->get($apiUrl);
+        $json = $response->json();
+        
+        $result = [
+            'success' => true,
+            'message' => isset($json['thongbao']) ? strip_tags($json['thongbao']) : 'Đã thêm vào yêu thích!'
+        ];
+
+        return response()->json($result);
+    }
+
+    /**
+     * Xóa sản phẩm khỏi wishlist qua API
+     */
+    public function apiRemoveFromWishlist(Request $request)
+    {
+        $productId = $request->input('productId') ?: $request->input('IDPart');
+        $wishlistCookie = $request->input('wishlistCookie') ?: $request->input('id') ?: $request->cookie('WishlistMabaogia');
+        
+        $apiUrl = "https://demodienmay.125.atoz.vn/cart/xoawl.asp?IDPart={$productId}&id={$wishlistCookie}";
+        
+        $response = Http::withOptions(['verify' => false])->get($apiUrl);
+        $responseBody = $response->body();
+        
+        $result = ['success' => true, 'message' => 'Đã xóa khỏi yêu thích'];
+
+        // Parse JavaScript object để lấy thongbao
+        $pattern = '/var info = \{([^}]*)\};/';
+        if (preg_match($pattern, $responseBody, $matches)) {
+            $jsContent = $matches[1];
+            $thongbaoPattern = '/thongbao:\s*[\'"]([^\'"]*)[\'"]*/';
+            if (preg_match($thongbaoPattern, $jsContent, $thongbaoMatch)) {
+                $result['message'] = strip_tags($thongbaoMatch[1]);
+            }
+        }
+
+        return response()->json($result);
     }
 }

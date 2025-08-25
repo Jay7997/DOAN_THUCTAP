@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\ProductService;
 use App\Services\CartService;
+use App\Services\ApiCartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -11,11 +12,13 @@ class CartController extends Controller
 {
     protected $productService;
     protected $cartService;
+    protected $apiCartService;
 
-    public function __construct(ProductService $productService, CartService $cartService)
+    public function __construct(ProductService $productService, CartService $cartService, ApiCartService $apiCartService)
     {
         $this->productService = $productService;
         $this->cartService = $cartService;
+        $this->apiCartService = $apiCartService;
     }
 
     public function add($productId, Request $request)
@@ -145,5 +148,125 @@ class CartController extends Controller
     {
         $this->cartService->clearCart();
         return redirect()->route('cart.view')->with('success', 'Đã xóa toàn bộ giỏ hàng');
+    }
+
+    // ========== API CART METHODS THEO YÊU CẦU ==========
+
+    /**
+     * Lấy cookie cho DathangMabaogia và WishlistMabaogia
+     */
+    public function getCookies()
+    {
+        $cookies = $this->apiCartService->getCookies();
+        
+        $response = response()->json($cookies);
+        
+        // Thiết lập cookie với thời gian 365 ngày
+        if (isset($cookies['DathangMabaogia'])) {
+            $response->cookie('DathangMabaogia', $cookies['DathangMabaogia'], 365 * 24 * 60);
+        }
+        if (isset($cookies['WishlistMabaogia'])) {
+            $response->cookie('WishlistMabaogia', $cookies['WishlistMabaogia'], 365 * 24 * 60);
+        }
+        
+        return $response;
+    }
+
+    /**
+     * Lấy giỏ hàng hiện tại
+     */
+    public function getCurrentCart(Request $request)
+    {
+        $cartCookie = $request->cookie('DathangMabaogia');
+        $cart = $this->apiCartService->getCurrentCart($cartCookie);
+        
+        return response()->json($cart);
+    }
+
+    /**
+     * Thêm sản phẩm vào giỏ hàng qua API
+     */
+    public function apiAddToCart(Request $request)
+    {
+        $productId = $request->input('productId') ?: $request->input('IDPart');
+        $cartCookie = $request->input('cartCookie') ?: $request->input('id') ?: $request->cookie('DathangMabaogia');
+        
+        $userInfo = $this->apiCartService->getCurrentUserInfo();
+        
+        if ($userInfo['authenticated']) {
+            $result = $this->apiCartService->addToCart(
+                $productId,
+                $userInfo['userid'],
+                $userInfo['pass']
+            );
+        } else {
+            $result = $this->apiCartService->addToCart(
+                $productId,
+                null,
+                null,
+                $cartCookie
+            );
+        }
+        
+        return response()->json($result);
+    }
+
+    /**
+     * Xóa sản phẩm khỏi giỏ hàng qua API
+     */
+    public function apiRemoveFromCart(Request $request)
+    {
+        $productId = $request->input('productId') ?: $request->input('IDPart');
+        $cartCookie = $request->input('cartCookie') ?: $request->input('id') ?: $request->cookie('DathangMabaogia');
+        
+        $userInfo = $this->apiCartService->getCurrentUserInfo();
+        
+        if ($userInfo['authenticated']) {
+            $result = $this->apiCartService->removeFromCart(
+                $productId,
+                $userInfo['userid'],
+                $userInfo['pass']
+            );
+        } else {
+            $result = $this->apiCartService->removeFromCart(
+                $productId,
+                null,
+                null,
+                $cartCookie
+            );
+        }
+        
+        return response()->json($result);
+    }
+
+    /**
+     * Cập nhật số lượng sản phẩm trong giỏ hàng qua API
+     */
+    public function apiUpdateQuantity(Request $request)
+    {
+        $productId = $request->input('productId') ?: $request->input('IDPart');
+        $quantity = $request->input('quantity') ?: $request->input('id1') ?: $request->input('id2');
+        $cartCookie = $request->input('cartCookie') ?: $request->input('id') ?: $request->cookie('DathangMabaogia');
+        
+        $userInfo = $this->apiCartService->getCurrentUserInfo();
+        
+        if ($userInfo['authenticated']) {
+            $result = $this->apiCartService->updateCartQuantity(
+                $productId,
+                (int)$quantity,
+                $userInfo['userid'],
+                $userInfo['pass']
+            );
+        } else {
+            $result = $this->apiCartService->updateCartQuantity(
+                $productId,
+                (int)$quantity,
+                null,
+                null,
+                $cartCookie
+            );
+        }
+        
+        return response()->json($result);
     }
 }

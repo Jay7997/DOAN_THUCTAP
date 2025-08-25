@@ -132,6 +132,9 @@
                             <i class="bi bi-cart-check"></i>
                             <span class="badge">{{ session('cart') ? count(session('cart')) : 0 }}</span>
                         </a>
+                        <a href="/cart/api-demo" class="action-btn" title="Demo API Cart" style="background-color: #d4a017; color: #1a252f; padding: 8px 12px; border-radius: 5px; text-decoration: none; font-size: 12px; font-weight: bold;">
+                            API Demo
+                        </a>
                         @if (session('user_email'))
                         <div class="user-menu dropdown">
                             <button class="user-btn dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">

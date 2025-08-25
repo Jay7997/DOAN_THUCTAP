@@ -42,6 +42,18 @@ Route::post('/cart/add', [CartController::class, 'addPost'])->name('cart.add.pos
 Route::post('/cart/update', [CartController::class, 'update'])->name('cart.update');
 Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
 
+// API Giỏ hàng mới theo yêu cầu
+Route::get('/api/cart/cookies', [CartController::class, 'getCookies'])->name('api.cart.cookies');
+Route::get('/api/cart/current', [CartController::class, 'getCurrentCart'])->name('api.cart.current');
+Route::post('/api/cart/add', [CartController::class, 'apiAddToCart'])->name('api.cart.add');
+Route::post('/api/cart/remove', [CartController::class, 'apiRemoveFromCart'])->name('api.cart.remove');
+Route::post('/api/cart/update', [CartController::class, 'apiUpdateQuantity'])->name('api.cart.update');
+
+// Demo page cho API cart
+Route::get('/cart/api-demo', function () {
+    return view('cart.api-demo');
+})->name('cart.api.demo');
+
 // Thanh toán
 Route::get('/payment', [PaymentController::class, 'showPaymentForm'])->name('payment.form');
 Route::post('/payment/process', [PaymentController::class, 'processPayment'])->name('payment.process');
@@ -64,12 +76,157 @@ Route::get('/wishlist/get-cookie', [\App\Http\Controllers\WishlistController::cl
 // ✅ THÊM ROUTE CHO COUNT
 Route::get('/wishlist/count', [WishlistController::class, 'getCount'])->name('wishlist.count');
 
+// API Wishlist mới theo yêu cầu
+Route::get('/api/wishlist/current', [WishlistController::class, 'getCurrentWishlist'])->name('api.wishlist.current');
+Route::post('/api/wishlist/add', [WishlistController::class, 'apiAddToWishlist'])->name('api.wishlist.add');
+Route::post('/api/wishlist/remove', [WishlistController::class, 'apiRemoveFromWishlist'])->name('api.wishlist.remove');
+
 // Xác thực
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login.form')->middleware('guest');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register.form')->middleware('guest');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// ========== CHỨC NĂNG GIỎ HÀNG THEO YÊU CẦU ==========
+
+// 1. Lấy cookie cho DathangMabaogia và WishlistMabaogia (thời gian 365 ngày)
+Route::get('/ww1/cookie.mabaogia', function () {
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->get('https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia');
+    
+    $responseData = $res->json();
+    
+    // Thiết lập cookie với thời gian 365 ngày
+    $response = response()->json($responseData);
+    
+    if (is_array($responseData)) {
+        foreach ($responseData as $item) {
+            if (isset($item['DathangMabaogia'])) {
+                $response->cookie('DathangMabaogia', $item['DathangMabaogia'], 365 * 24 * 60); // 365 ngày
+            }
+            if (isset($item['WishlistMabaogia'])) {
+                $response->cookie('WishlistMabaogia', $item['WishlistMabaogia'], 365 * 24 * 60); // 365 ngày
+            }
+        }
+    }
+    
+    return $response->header('Access-Control-Allow-Origin', '*');
+});
+
+// 2. Giỏ hàng hiện tại
+Route::get('/ww1/giohanghientai', function (\Illuminate\Http\Request $request) {
+    $cartCookie = $request->cookie('DathangMabaogia');
+    
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->withCookies(['DathangMabaogia' => $cartCookie], 'demodienmay.125.atoz.vn')
+        ->get('https://demodienmay.125.atoz.vn/ww1/giohanghientai');
+    
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*');
+});
+
+// 3. Yêu thích hoặc theo dõi hiện tại
+Route::get('/ww1/wishlisthientai', function (\Illuminate\Http\Request $request) {
+    $wishlistCookie = $request->cookie('WishlistMabaogia');
+    
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->withCookies(['WishlistMabaogia' => $wishlistCookie], 'demodienmay.125.atoz.vn')
+        ->get('https://demodienmay.125.atoz.vn/ww1/wishlisthientai');
+    
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*');
+});
+
+// 4. Thêm mặt hàng vào giỏ hàng
+// Đã đăng nhập: /ww1/save.addtocart?userid&pass&id=mã_sản_phẩm
+Route::get('/ww1/save.addtocart', function (\Illuminate\Http\Request $request) {
+    $userid = $request->input('userid');
+    $pass = $request->input('pass');
+    $productId = $request->input('id');
+    
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->get("https://demodienmay.125.atoz.vn/ww1/save.addtocart?userid={$userid}&pass={$pass}&id={$productId}");
+    
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*');
+});
+
+// Chưa đăng nhập: /ww1/addgiohang?IDPart=mã_sản_phẩm&id=cookie_DathangMabaogia
+Route::get('/ww1/addgiohang', function (\Illuminate\Http\Request $request) {
+    $productId = $request->input('IDPart');
+    $cartCookie = $request->input('id') ?: $request->cookie('DathangMabaogia');
+    
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->get("https://demodienmay.125.atoz.vn/ww1/addgiohang?IDPart={$productId}&id={$cartCookie}");
+    
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*');
+});
+
+// 5. Xóa mặt hàng khỏi giỏ hàng
+// Đã đăng nhập: /ww1/remove.listcart?userid&pass&id=mã_sản_phẩm
+Route::get('/ww1/remove.listcart', function (\Illuminate\Http\Request $request) {
+    $userid = $request->input('userid');
+    $pass = $request->input('pass');
+    $productId = $request->input('id');
+    
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->get("https://demodienmay.125.atoz.vn/ww1/remove.listcart?userid={$userid}&pass={$pass}&id={$productId}");
+    
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*');
+});
+
+// Chưa đăng nhập: /ww1/removegiohang?IDPart=mã_sản_phẩm&id=cookie_DathangMabaogia
+Route::get('/ww1/removegiohang', function (\Illuminate\Http\Request $request) {
+    $productId = $request->input('IDPart');
+    $cartCookie = $request->input('id') ?: $request->cookie('DathangMabaogia');
+    
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->get("https://demodienmay.125.atoz.vn/ww1/removegiohang?IDPart={$productId}&id={$cartCookie}");
+    
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*');
+});
+
+// 6. Tăng giảm số lượng mặt hàng
+// Đã đăng nhập: /ww1/upcart?userid&pass&id=mã_sản_phẩm&id2=số_lượng_mới
+Route::get('/ww1/upcart', function (\Illuminate\Http\Request $request) {
+    $userid = $request->input('userid');
+    $pass = $request->input('pass');
+    $productId = $request->input('id');
+    $quantity = $request->input('id2');
+    
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->get("https://demodienmay.125.atoz.vn/ww1/upcart?userid={$userid}&pass={$pass}&id={$productId}&id2={$quantity}");
+    
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*');
+});
+
+// Chưa đăng nhập: /ww1/upgiohang?IDPart=mã_sản_phẩm&id=cookie_DathangMabaogia&id1=số_lượng_mới
+Route::get('/ww1/upgiohang', function (\Illuminate\Http\Request $request) {
+    $productId = $request->input('IDPart');
+    $cartCookie = $request->input('id') ?: $request->cookie('DathangMabaogia');
+    $quantity = $request->input('id1');
+    
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->get("https://demodienmay.125.atoz.vn/ww1/upgiohang?IDPart={$productId}&id={$cartCookie}&id1={$quantity}");
+    
+    return response($res->body(), $res->status())
+        ->header('Content-Type', 'application/json')
+        ->header('Access-Control-Allow-Origin', '*');
+});
+
+// ========== API CŨ (giữ lại để tương thích) ==========
 
 // Proxy route để lấy cookie WishlistMabaogia từ backend Laravel, tránh lỗi CORS
 Route::get('/api/proxy-cookie', function () {
