@@ -232,46 +232,72 @@ $(document).ready(function () {
         });
     };
 
-    // Function to toggle wishlist
+    // Function to toggle wishlist (uses GET add/remove endpoints)
     window.toggleWishlist = function (productId) {
-        $.ajax({
-            url: "/wishlist/toggle",
-            method: "POST",
-            data: {
-                product_id: productId,
-                _token: $('meta[name="csrf-token"]').attr("content"),
+        const btn = $(`.btn-wishlist[onclick*="${productId}"]`);
+        const isAdding = !btn.hasClass("active");
+
+        fetch(`/wishlist/${isAdding ? "add" : "remove"}/${productId}`, {
+            method: "GET",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
             },
-            success: function (response) {
-                if (response.success) {
-                    const btn = $(`.btn-wishlist[onclick*="${productId}"]`);
-                    if (response.in_wishlist) {
-                        btn.removeClass("btn-outline-danger").addClass(
-                            "btn-danger"
-                        );
-                        showNotification(
-                            "Đã thêm vào danh sách yêu thích!",
-                            "success"
-                        );
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data && data.success !== false) {
+                    btn.toggleClass("active");
+                    if (btn.hasClass("active")) {
+                        btn.removeClass("btn-outline-danger").addClass("btn-danger");
+                        btn.html('<i class="bi bi-heart-fill"></i> Đã yêu thích');
                     } else {
-                        btn.removeClass("btn-danger").addClass(
-                            "btn-outline-danger"
-                        );
-                        showNotification(
-                            "Đã xóa khỏi danh sách yêu thích!",
-                            "success"
-                        );
+                        btn.removeClass("btn-danger").addClass("btn-outline-danger");
+                        btn.html('<i class="bi bi-heart"></i> Yêu thích');
                     }
+
+                    const wishlistBadge = document.getElementById("wishlist-count");
+                    if (wishlistBadge) {
+                        fetch("/wishlist/count", {
+                            method: "GET",
+                            headers: {
+                                "X-Requested-With": "XMLHttpRequest",
+                                Accept: "application/json",
+                            },
+                        })
+                            .then((r) => r.json())
+                            .then((countData) => {
+                                if (
+                                    countData &&
+                                    typeof countData.count !== "undefined"
+                                ) {
+                                    wishlistBadge.textContent = countData.count;
+                                }
+                            })
+                            .catch(() => {});
+                    }
+
+                    showNotification(
+                        `Sản phẩm đã được ${
+                            isAdding ? "thêm vào" : "xóa khỏi"
+                        } yêu thích!`,
+                        "success"
+                    );
                 } else {
                     showNotification(
-                        response.message || "Có lỗi xảy ra!",
+                        (data && data.message) || "Có lỗi xảy ra!",
                         "error"
                     );
                 }
-            },
-            error: function () {
-                showNotification("Có lỗi xảy ra!", "error");
-            },
-        });
+            })
+            .catch(() => {
+                showNotification(
+                    `Có lỗi xảy ra khi ${
+                        isAdding ? "thêm" : "xóa"
+                    } sản phẩm khỏi yêu thích!`,
+                    "error"
+                );
+            });
     };
 
     // Function to show notification

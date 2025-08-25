@@ -27,9 +27,11 @@ class WishlistController extends Controller
     public function index(Request $request)
     {
         $cookie = $request->cookie('WishlistMabaogia');
-        $response = Http::withCookies([
+        $response = Http::withOptions(['verify' => false])->withHeaders([
+            'Cache-Control' => 'no-cache',
+        ])->withCookies([
             'WishlistMabaogia' => $cookie,
-        ], 'demodienmay.125.atoz.vn')->get('https://demodienmay.125.atoz.vn/ww1/wishlisthientai.asp');
+        ], 'demodienmay.125.atoz.vn')->get('https://demodienmay.125.atoz.vn/ww1/wishlisthientai.asp?ts=' . time());
 
         $json = $response->json();
         $wishlist = [];
@@ -57,7 +59,7 @@ class WishlistController extends Controller
     {
         $userid = $request->user() ? $request->user()->id : null;
         $pass = $request->user() ? $request->user()->password : null;
-        $cookie = $request->cookie('WishlistMabaogia');
+        $cookie = $request->input('wishlistCookie') ?: $request->cookie('WishlistMabaogia');
 
         if ($userid && $pass) {
             $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.wishlist.asp?userid=$userid&pass=$pass&id=$id";
@@ -65,7 +67,7 @@ class WishlistController extends Controller
             $apiUrl = "https://demodienmay.125.atoz.vn/ww1/addwishlist.asp?IDPart=$id&id=$cookie";
         }
 
-        $response = Http::get($apiUrl);
+        $response = Http::withOptions(['verify' => false])->get($apiUrl);
         $json = $response->json();
         $thongbao = isset($json['thongbao']) ? strip_tags($json['thongbao']) : 'Đã thêm vào yêu thích!';
 
@@ -103,6 +105,7 @@ class WishlistController extends Controller
         $responseBody = $response->body();
         $thongbao = 'Đã xoá khỏi yêu thích!';
         $success = false;
+        $successByMessage = false;
 
         // Parse JavaScript object để lấy thongbao
         $pattern = '/var info = \{([^}]*)\};/';
@@ -111,13 +114,39 @@ class WishlistController extends Controller
             $thongbaoPattern = '/thongbao:\s*[\'"]([^\'"]*)[\'"]*/';
             if (preg_match($thongbaoPattern, $jsContent, $thongbaoMatch)) {
                 $thongbao = strip_tags($thongbaoMatch[1]);
-                $success = true;
             }
         }
 
-        // Kiểm tra nếu response chứa thông báo thành công
-        if (stripos($responseBody, 'thành công') !== false || stripos($responseBody, 'đã xóa') !== false) {
-            $success = true;
+        // Xác định thành công theo thông điệp
+        $tbLower = mb_strtolower($thongbao, 'UTF-8');
+        if (strpos($tbLower, 'xóa') !== false || strpos($tbLower, 'xoá') !== false || strpos($tbLower, 'thành công') !== false) {
+            $successByMessage = true;
+        }
+
+        // Kiểm tra lại bằng cách gọi danh sách wishlist và xác nhận item không còn
+        try {
+            $listRes = Http::withOptions(['verify' => false])
+                ->withHeaders(['Cache-Control' => 'no-cache'])
+                ->withCookies([
+                    'WishlistMabaogia' => $cookie,
+                ], 'demodienmay.125.atoz.vn')
+                ->get('https://demodienmay.125.atoz.vn/ww1/wishlisthientai.asp?ts=' . time());
+
+            $listJson = $listRes->json();
+            $stillExists = false;
+            if (!empty($listJson['items'])) {
+                foreach ($listJson['items'] as $item) {
+                    if ((string)($item['id'] ?? '') === (string)$id) {
+                        $stillExists = true;
+                        break;
+                    }
+                }
+            }
+            $success = $successByMessage || !$stillExists;
+        } catch (\Throwable $e) {
+            Log::warning('Wishlist remove - verify failed', ['error' => $e->getMessage()]);
+            // fallback: dùng kết quả theo thông điệp
+            $success = $successByMessage;
         }
 
         Log::info("Wishlist remove - Parsed result", [
