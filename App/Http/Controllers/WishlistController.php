@@ -27,9 +27,11 @@ class WishlistController extends Controller
     public function index(Request $request)
     {
         $cookie = $request->cookie('WishlistMabaogia');
-        $response = Http::withCookies([
+        $response = Http::withOptions(['verify' => false])->withHeaders([
+            'Cache-Control' => 'no-cache',
+        ])->withCookies([
             'WishlistMabaogia' => $cookie,
-        ], 'demodienmay.125.atoz.vn')->get('https://demodienmay.125.atoz.vn/ww1/wishlisthientai.asp');
+        ], 'demodienmay.125.atoz.vn')->get('https://demodienmay.125.atoz.vn/ww1/wishlisthientai.asp?ts=' . time());
 
         $json = $response->json();
         $wishlist = [];
@@ -57,7 +59,7 @@ class WishlistController extends Controller
     {
         $userid = $request->user() ? $request->user()->id : null;
         $pass = $request->user() ? $request->user()->password : null;
-        $cookie = $request->cookie('WishlistMabaogia');
+        $cookie = $request->input('wishlistCookie') ?: $request->cookie('WishlistMabaogia');
 
         if ($userid && $pass) {
             $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.wishlist.asp?userid=$userid&pass=$pass&id=$id";

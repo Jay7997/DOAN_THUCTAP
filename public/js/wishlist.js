@@ -122,6 +122,9 @@ function addToWishlist(productId, callback) {
             "X-Requested-With": "XMLHttpRequest",
             Accept: "application/json",
         },
+        data: {
+            wishlistCookie: getCookie("WishlistMabaogia") || undefined,
+        },
         success: function (res) {
             console.log("[Wishlist] Kết quả thêm từ Laravel API:", res);
 
@@ -155,6 +158,9 @@ function removeFromWishlist(productId, callback) {
         headers: {
             "X-Requested-With": "XMLHttpRequest",
             Accept: "application/json",
+        },
+        data: {
+            wishlistCookie: getCookie("WishlistMabaogia") || undefined,
         },
         success: function (res) {
             console.log("[Wishlist] Kết quả xóa từ Laravel API:", res);
