@@ -165,16 +165,24 @@ function removeFromWishlist(productId, callback) {
         success: function (res) {
             console.log("[Wishlist] Kết quả xóa từ Laravel API:", res);
 
-            let message = "Đã xóa khỏi yêu thích!";
+            // Prefer server message if provided
+            let message = (res && (res.message || res.thongbao)) || "Đã xóa khỏi yêu thích!";
             let success = false;
 
-            if (res && res.success !== undefined) {
+            if (res && typeof res.success === "boolean") {
                 success = res.success;
-            } else if (res && res.message) {
-                message = res.message;
+            } else if (res && (res.message || res.thongbao)) {
+                // If server sends a message but no explicit success flag, assume success
                 success = true;
-            } else if (res && res.thongbao) {
-                message = res.thongbao;
+            }
+
+            // Heuristic: if message indicates success, treat it as success even if flag says false
+            const msgLower = (message || "").toLowerCase();
+            if (
+                msgLower.includes("xóa") ||
+                msgLower.includes("xoá") ||
+                msgLower.includes("thành công")
+            ) {
                 success = true;
             }
 

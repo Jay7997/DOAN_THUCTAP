@@ -105,6 +105,7 @@ class WishlistController extends Controller
         $responseBody = $response->body();
         $thongbao = 'Đã xoá khỏi yêu thích!';
         $success = false;
+        $successByMessage = false;
 
         // Parse JavaScript object để lấy thongbao
         $pattern = '/var info = \{([^}]*)\};/';
@@ -113,8 +114,13 @@ class WishlistController extends Controller
             $thongbaoPattern = '/thongbao:\s*[\'"]([^\'"]*)[\'"]*/';
             if (preg_match($thongbaoPattern, $jsContent, $thongbaoMatch)) {
                 $thongbao = strip_tags($thongbaoMatch[1]);
-                $success = true;
             }
+        }
+
+        // Xác định thành công theo thông điệp
+        $tbLower = mb_strtolower($thongbao, 'UTF-8');
+        if (strpos($tbLower, 'xóa') !== false || strpos($tbLower, 'xoá') !== false || strpos($tbLower, 'thành công') !== false) {
+            $successByMessage = true;
         }
 
         // Kiểm tra lại bằng cách gọi danh sách wishlist và xác nhận item không còn
@@ -136,9 +142,11 @@ class WishlistController extends Controller
                     }
                 }
             }
-            $success = !$stillExists;
+            $success = $successByMessage || !$stillExists;
         } catch (\Throwable $e) {
             Log::warning('Wishlist remove - verify failed', ['error' => $e->getMessage()]);
+            // fallback: dùng kết quả theo thông điệp
+            $success = $successByMessage;
         }
 
         Log::info("Wishlist remove - Parsed result", [
