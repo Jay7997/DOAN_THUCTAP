@@ -65,7 +65,7 @@ class WishlistController extends Controller
             $apiUrl = "https://demodienmay.125.atoz.vn/ww1/addwishlist.asp?IDPart=$id&id=$cookie";
         }
 
-        $response = Http::get($apiUrl);
+        $response = Http::withOptions(['verify' => false])->get($apiUrl);
         $json = $response->json();
         $thongbao = isset($json['thongbao']) ? strip_tags($json['thongbao']) : 'Đã thêm vào yêu thích!';
 
