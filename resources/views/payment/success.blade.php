@@ -76,6 +76,16 @@
             <a href="{{ route('cart.history') }}" class="btn btn-outline-secondary btn-lg">
                 📋 Xem lịch sử đơn hàng
             </a>
+            @if(session('order_data.order_id'))
+            <form action="{{ route('orders.cancel.session') }}" method="POST" class="d-inline-block ms-3"
+                onsubmit="return confirm('Bạn có chắc muốn huỷ đơn hàng này?');">
+                @csrf
+                <input type="hidden" name="order_id" value="{{ session('order_data.order_id') }}">
+                <button type="submit" class="btn btn-danger btn-lg">
+                    ❌ Huỷ đơn hàng
+                </button>
+            </form>
+            @endif
         </div>
 
         <div class="mt-5">

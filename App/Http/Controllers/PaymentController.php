@@ -59,6 +59,7 @@ class PaymentController extends Controller
         }
 
         // 4. Chuẩn bị dữ liệu đơn hàng
+        $generatedOrderId = 'ORD-' . time();
         $orderData = [
             'full_name' => $request->input('full_name'),
             'email' => $request->input('email'),
@@ -67,6 +68,8 @@ class PaymentController extends Controller
             'payment_method' => $request->input('payment_method'),
             'total_amount' => $totalAmount,
             'order_date' => now(),
+            // Lưu kèm mã đơn hàng để hủy ở trang success
+            'order_id' => $generatedOrderId,
         ];
 
         // 5. Xử lý đơn hàng (giả lập thành công)
@@ -109,10 +112,10 @@ class PaymentController extends Controller
             // Thêm đơn hàng vào lịch sử đơn hàng trong session
             $orderHistory = $request->session()->get('order_history', []);
             $orderHistory[] = [
-                'order_id' => 'ORD-' . time(), // Generate a simple order ID
+                'order_id' => $generatedOrderId, // Generate a simple order ID
                 'created_at' => now(),
                 'total' => $totalAmount,
-                'status' => 1, // 1 = Đã giao hàng (simulated)
+                'status' => 0, // 0 = Chờ xử lý (cho phép huỷ)
                 'payment_data' => $orderData,
                 'items' => $cart
             ];

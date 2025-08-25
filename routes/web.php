@@ -50,6 +50,7 @@ Route::get('/payment/success', [PaymentController::class, 'showSuccess'])->name(
 // Lịch sử đơn hàng
 Route::get('/purchase-history', [OrderHistoryController::class, 'index'])->name('cart.history');
 Route::post('/orders/cancel', [OrderCancelController::class, 'cancel'])->name('orders.cancel')->middleware('auth');
+Route::post('/orders/cancel-session', [OrderCancelController::class, 'cancelSession'])->name('orders.cancel.session');
 
 // Liên hệ
 Route::get('/lien-he', [ContactController::class, 'show'])->name('lien-he');
