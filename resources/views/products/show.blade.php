@@ -439,43 +439,22 @@
     });
 
 
-    // Hàm thêm vào giỏ hàng
-    function addToCart(productId, productName, price, image) {
-        var cart = JSON.parse(localStorage.getItem('cart') || '{}');
-
-        if (cart[productId]) {
-            cart[productId].quantity += 1;
+    // Hàm thêm vào giỏ hàng qua proxy
+    function addToCart(productId) {
+        if (window.CartAPI && typeof window.CartAPI.add === 'function') {
+            window.CartAPI.add(productId);
         } else {
-            cart[productId] = {
-                id: productId,
-                tieude: productName,
-                gia: price,
-                hinhdaidien: image,
-                quantity: 1
-            };
-        }
-
-        localStorage.setItem('cart', JSON.stringify(cart));
-
-        $.ajax({
-            url: '/cart/add',
-            method: 'POST',
-            data: {
-                product_id: productId,
-                quantity: 1,
-                _token: $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    alert('Đã thêm sản phẩm vào giỏ hàng!');
-                } else {
-                    alert('Có lỗi xảy ra khi thêm vào giỏ hàng!');
+            // Fallback tới route cũ nếu cần
+            $.ajax({
+                url: '/cart/add',
+                method: 'POST',
+                data: {
+                    product_id: productId,
+                    quantity: 1,
+                    _token: $('meta[name="csrf-token"]').attr('content')
                 }
-            },
-            error: function() {
-                alert('Có lỗi xảy ra khi thêm vào giỏ hàng!');
-            }
-        });
+            });
+        }
     }
 
     // Wishlist toggle for product detail page

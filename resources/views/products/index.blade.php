@@ -144,7 +144,7 @@
                     </p>
 
                     <div class="product-actions">
-                        <button class="btn btn-primary btn-lg" onclick="addToCart('{{ $product['id'] }}', '{{ addslashes($product['tieude'] ?? '') }}', {{ $product['gia'] ?? 0 }}, '{{ $product['hinhdaidien'] ?? '' }}')">
+                        <button class="btn btn-primary btn-lg" onclick="CartAPI.add('{{ $product['id'] }}')">
                                     🛒 Thêm vào giỏ hàng
                                 </button>
                         <button class="btn-wishlist"

@@ -130,7 +130,7 @@
                         </a>
                         <a href="/cart" class="action-btn cart-btn" title="Giỏ hàng">
                             <i class="bi bi-cart-check"></i>
-                            <span class="badge">{{ session('cart') ? count(session('cart')) : 0 }}</span>
+                            <span class="badge" id="cart-count">{{ session('cart') ? count(session('cart')) : 0 }}</span>
                         </a>
                         @if (session('user_email'))
                         <div class="user-menu dropdown">
@@ -225,6 +225,7 @@
 
     <!-- Scripts -->
     <script src="{{ asset('js/wishlist.js') }}"></script>
+    <script src="{{ asset('js/cart.js') }}"></script>
     <script src="{{ asset('js/product.js') }}"></script>
 
     <script>

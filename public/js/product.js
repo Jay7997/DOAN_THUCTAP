@@ -199,37 +199,25 @@ $(document).ready(function () {
         $(".quick-view-image img").attr("src", imageSrc);
     };
 
-    // Function to add product to cart
+    // Function to add product to cart -> use CartAPI
     window.addToCart = function (productId) {
-        $.ajax({
-            url: "/cart/add",
-            method: "POST",
-            data: {
-                product_id: productId,
-                quantity: 1,
-                _token: $('meta[name="csrf-token"]').attr("content"),
-            },
-            success: function (response) {
-                if (response.success) {
-                    showNotification(
-                        "Sản phẩm đã được thêm vào giỏ hàng!",
-                        "success"
-                    );
-                    updateCartCount(response.cart_count);
-                } else {
-                    showNotification(
-                        response.message || "Có lỗi xảy ra!",
-                        "error"
-                    );
+        if (window.CartAPI && typeof window.CartAPI.add === 'function') {
+            window.CartAPI.add(productId, function(success, res) {
+                if (success) {
+                    updateCartCount((res && (res.sl || res.count)) || undefined);
                 }
-            },
-            error: function () {
-                showNotification(
-                    "Có lỗi xảy ra khi thêm vào giỏ hàng!",
-                    "error"
-                );
-            },
-        });
+            });
+        } else {
+            $.ajax({
+                url: "/cart/add",
+                method: "POST",
+                data: {
+                    product_id: productId,
+                    quantity: 1,
+                    _token: $('meta[name="csrf-token"]').attr("content"),
+                }
+            });
+        }
     };
 
     // Function to toggle wishlist (uses GET add/remove endpoints)

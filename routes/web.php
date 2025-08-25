@@ -142,19 +142,38 @@ Route::get('/api/proxy-cart-current', function (\Illuminate\Http\Request $reques
 Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) {
     $productId = $request->input('productId');
     $cartCookie = $request->input('cartCookie');
-    $userid = $request->input('userid');
-    $pass = $request->input('pass');
+    $userid = $request->input('userid') ?: session('user_email');
+    $pass = $request->input('pass') ?: session('plain_pass');
 
     if ($userid && $pass) {
         $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.addtocart.asp?userid={$userid}&pass={$pass}&id={$productId}";
-        $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
     } else {
         $apiUrl = "https://demodienmay.125.atoz.vn/ww1/addgiohang.asp?IDPart={$productId}&id={$cartCookie}";
-        $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
     }
 
-    return response($res->body(), $res->status())
-        ->header('Content-Type', 'application/json')
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
+    $responseBody = $res->body();
+
+    // Chuẩn hóa phản hồi về JSON nếu endpoint trả về JS object
+    $data = [
+        'thongbao' => 'Đã thêm vào giỏ hàng',
+    ];
+
+    $pattern = '/var info = \{([^}]*)\};/';
+    if (preg_match($pattern, $responseBody, $matches)) {
+        $jsContent = $matches[1];
+        if (preg_match('/thongbao:\s*[\'\"]([^\'\"]*)[\'\"]/',$jsContent,$msgMatch)) {
+            $data['thongbao'] = strip_tags($msgMatch[1]);
+        }
+        if (preg_match('/sl:\s*(\d+)/',$jsContent,$slMatch)) {
+            $data['sl'] = (int)$slMatch[1];
+        }
+        if (preg_match('/tongtien:\s*[\'\"]([^\'\"]*)[\'\"]/',$jsContent,$totalMatch)) {
+            $data['tongtien'] = $totalMatch[1];
+        }
+    }
+
+    return response()->json($data)
         ->header('Access-Control-Allow-Origin', '*')
         ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -164,8 +183,8 @@ Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) 
 Route::post('/api/proxy-cart-remove', function (\Illuminate\Http\Request $request) {
     $productId = $request->input('productId');
     $cartCookie = $request->input('cartCookie');
-    $userid = $request->input('userid');
-    $pass = $request->input('pass');
+    $userid = $request->input('userid') ?: session('user_email');
+    $pass = $request->input('pass') ?: session('plain_pass');
 
     if ($userid && $pass) {
         $apiUrl = "https://demodienmay.125.atoz.vn/ww1/remove.listcart.asp?userid={$userid}&pass={$pass}&id={$productId}";
@@ -206,8 +225,8 @@ Route::post('/api/proxy-cart-update', function (\Illuminate\Http\Request $reques
     $productId = $request->input('productId');
     $quantity = (int) $request->input('quantity');
     $cartCookie = $request->input('cartCookie');
-    $userid = $request->input('userid');
-    $pass = $request->input('pass');
+    $userid = $request->input('userid') ?: session('user_email');
+    $pass = $request->input('pass') ?: session('plain_pass');
 
     if ($userid && $pass) {
         $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upcart.asp?userid={$userid}&pass={$pass}&id={$productId}&id2={$quantity}";
