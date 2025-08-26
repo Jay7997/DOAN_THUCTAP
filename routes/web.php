@@ -141,9 +141,25 @@ Route::get('/api/proxy-cart-current', function (\Illuminate\Http\Request $reques
 // Thêm vào giỏ hàng (đăng nhập hoặc chưa đăng nhập)
 Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) {
     $productId = $request->input('productId');
-    $cartCookie = $request->input('cartCookie');
+    $cartCookie = $request->input('cartCookie') ?: $request->cookie('DathangMabaogia');
     $userid = $request->input('userid');
     $pass = $request->input('pass');
+
+    // Ensure valid guest cart cookie if not logged in
+    if (!$userid && !$pass) {
+        if (empty($cartCookie) || strlen((string)$cartCookie) < 6) {
+            $cookieRes = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get('https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia');
+            $cookieJson = $cookieRes->json();
+            if (is_array($cookieJson)) {
+                foreach ($cookieJson as $item) {
+                    if (!empty($item['DathangMabaogia'])) {
+                        $cartCookie = $item['DathangMabaogia'];
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     if ($userid && $pass) {
         $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.addtocart?userid={$userid}&pass={$pass}&id={$productId}";
@@ -153,11 +169,23 @@ Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) 
         $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
     }
 
-    return response($res->body(), $res->status())
-        ->header('Content-Type', 'application/json')
+    // Normalize response
+    $body = $res->json();
+    if (!is_array($body)) {
+        $body = ['raw' => $res->body()];
+    }
+
+    $response = response()->json($body)
         ->header('Access-Control-Allow-Origin', '*')
         ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Set/refresh browser cookie if we obtained a new one
+    if (!empty($cartCookie)) {
+        $response->cookie('DathangMabaogia', (string)$cartCookie, 60 * 24 * 365, '/');
+    }
+
+    return $response;
 });
 
 // Xóa khỏi giỏ hàng (đăng nhập hoặc chưa đăng nhập)
