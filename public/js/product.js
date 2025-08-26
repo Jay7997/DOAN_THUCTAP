@@ -136,9 +136,9 @@ $(document).ready(function () {
                 </div>
                 
                 <div class="quick-view-actions">
-                    <button class="btn btn-primary btn-add-cart" onclick="addToCart(${
+                    <button class="btn btn-primary btn-add-cart" onclick="addToCart(
                         product.id
-                    })">
+                    )">
                         <i class="bi bi-cart-plus"></i> Thêm vào giỏ hàng
                     </button>
                     <a href="/products/${
@@ -199,29 +199,53 @@ $(document).ready(function () {
         $(".quick-view-image img").attr("src", imageSrc);
     };
 
-    // Function to add product to cart
+    // Function to add product to cart (via proxy to external API)
     window.addToCart = function (productId) {
         $.ajax({
-            url: "/cart/add",
+            url: "/api/proxy-cart-add",
             method: "POST",
+            dataType: "json",
             data: {
-                product_id: productId,
-                quantity: 1,
-                _token: $('meta[name="csrf-token"]').attr("content"),
+                productId: productId,
+                cartCookie: (typeof getCookie === 'function' ? getCookie('DathangMabaogia') : null)
             },
-            success: function (response) {
-                if (response.success) {
-                    showNotification(
-                        "Sản phẩm đã được thêm vào giỏ hàng!",
-                        "success"
-                    );
-                    updateCartCount(response.cart_count);
-                } else {
-                    showNotification(
-                        response.message || "Có lỗi xảy ra!",
-                        "error"
-                    );
+            success: function () {
+                showNotification(
+                    "Sản phẩm đã được thêm vào giỏ hàng!",
+                    "success"
+                );
+                // Poll external cart until the item appears, then redirect
+                var tries = 0;
+                function pollAndRedirect() {
+                    $.ajax({
+                        url: "/api/proxy-cart-current",
+                        method: "GET",
+                        dataType: "json"
+                    }).done(function (r) {
+                        var hasItem = false;
+                        var count = null;
+                        if (r) {
+                            if (Array.isArray(r.items)) {
+                                count = r.items.length;
+                                hasItem = r.items.some(function(it){ return String(it.id) === String(productId); });
+                            } else if (typeof r.sl !== "undefined") {
+                                count = r.sl;
+                            }
+                        }
+                        var badge = document.querySelector(".cart-btn .badge");
+                        if (badge && count !== null) badge.textContent = count;
+                        if (hasItem || tries >= 4) {
+                            window.location.href = "/cart";
+                        } else {
+                            tries += 1;
+                            setTimeout(pollAndRedirect, 350);
+                        }
+                    }).fail(function(){
+                        // On failure, still attempt to redirect after a short delay
+                        setTimeout(function(){ window.location.href = "/cart"; }, 350);
+                    });
                 }
+                pollAndRedirect();
             },
             error: function () {
                 showNotification(

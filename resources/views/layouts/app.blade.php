@@ -225,6 +225,7 @@
 
     <!-- Scripts -->
     <script src="{{ asset('js/wishlist.js') }}"></script>
+    <script src="{{ asset('js/cart.js') }}"></script>
     <script src="{{ asset('js/product.js') }}"></script>
 
     <script>

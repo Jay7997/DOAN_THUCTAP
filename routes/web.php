@@ -41,6 +41,8 @@ Route::get('/cart/add/{id}', [CartController::class, 'add'])->name('cart.add');
 Route::post('/cart/add', [CartController::class, 'addPost'])->name('cart.add.post');
 Route::post('/cart/update', [CartController::class, 'update'])->name('cart.update');
 Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
+// POST alias in case method spoofing is not applied by client
+Route::post('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove.post');
 
 // Thanh toán
 Route::get('/payment', [PaymentController::class, 'showPaymentForm'])->name('payment.form');
@@ -105,7 +107,7 @@ Route::post('/api/proxy-wishlist-add', function (\Illuminate\Http\Request $reque
 // Proxy routes for cart operations to avoid CORS
 // Lấy cookie DathangMabaogia (giỏ hàng) từ API ngoài và trả về JSON chuẩn
 Route::get('/cart/get-cookie', function () {
-    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get('https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia.asp');
+    $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get('https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia');
     $json = $res->json();
     $cartCookie = null;
     if (is_array($json)) {
@@ -126,10 +128,11 @@ Route::get('/cart/get-cookie', function () {
 Route::get('/api/proxy-cart-current', function (\Illuminate\Http\Request $request) {
     $cartCookie = $request->input('cartCookie') ?: $request->cookie('DathangMabaogia');
     $response = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->withHeaders(['Cache-Control' => 'no-cache'])
         ->withCookies([
             'DathangMabaogia' => $cartCookie,
         ], 'demodienmay.125.atoz.vn')
-        ->get('https://demodienmay.125.atoz.vn/ww1/giohanghientai.asp');
+        ->get('https://demodienmay.125.atoz.vn/ww1/giohanghientai.asp?ts=' . time());
 
     return response($response->body(), $response->status())
         ->header('Content-Type', 'application/json')
@@ -138,12 +141,36 @@ Route::get('/api/proxy-cart-current', function (\Illuminate\Http\Request $reques
         ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });
 
+// Aliases to avoid 404 due to caching/path mismatches
+Route::get('/cart/current', function (\Illuminate\Http\Request $request) {
+    return app()->handle(\Illuminate\Http\Request::create('/api/proxy-cart-current', 'GET', $request->all()));
+});
+Route::get('/api/cart/current', function (\Illuminate\Http\Request $request) {
+    return app()->handle(\Illuminate\Http\Request::create('/api/proxy-cart-current', 'GET', $request->all()));
+});
+
 // Thêm vào giỏ hàng (đăng nhập hoặc chưa đăng nhập)
 Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) {
     $productId = $request->input('productId');
-    $cartCookie = $request->input('cartCookie');
+    $cartCookie = $request->input('cartCookie') ?: $request->cookie('DathangMabaogia');
     $userid = $request->input('userid');
     $pass = $request->input('pass');
+
+    // Ensure valid guest cart cookie if not logged in
+    if (!$userid && !$pass) {
+        if (empty($cartCookie) || strlen((string)$cartCookie) < 6) {
+            $cookieRes = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get('https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia');
+            $cookieJson = $cookieRes->json();
+            if (is_array($cookieJson)) {
+                foreach ($cookieJson as $item) {
+                    if (!empty($item['DathangMabaogia'])) {
+                        $cartCookie = $item['DathangMabaogia'];
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     if ($userid && $pass) {
         $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.addtocart.asp?userid={$userid}&pass={$pass}&id={$productId}";
@@ -153,11 +180,23 @@ Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) 
         $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
     }
 
-    return response($res->body(), $res->status())
-        ->header('Content-Type', 'application/json')
+    // Normalize response
+    $body = $res->json();
+    if (!is_array($body)) {
+        $body = ['raw' => $res->body()];
+    }
+
+    $response = response()->json($body)
         ->header('Access-Control-Allow-Origin', '*')
         ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Set/refresh browser cookie if we obtained a new one
+    if (!empty($cartCookie)) {
+        $response->cookie('DathangMabaogia', (string)$cartCookie, 60 * 24 * 365, '/');
+    }
+
+    return $response;
 });
 
 // Xóa khỏi giỏ hàng (đăng nhập hoặc chưa đăng nhập)
@@ -168,9 +207,9 @@ Route::post('/api/proxy-cart-remove', function (\Illuminate\Http\Request $reques
     $pass = $request->input('pass');
 
     if ($userid && $pass) {
-        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/remove.listcart.asp?userid={$userid}&pass={$pass}&id={$productId}";
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/remove.listcart?userid={$userid}&pass={$pass}&id={$productId}";
     } else {
-        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/removegiohang.asp?IDPart={$productId}&id={$cartCookie}";
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/removegiohang?IDPart={$productId}&id={$cartCookie}";
     }
 
     $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
@@ -210,9 +249,9 @@ Route::post('/api/proxy-cart-update', function (\Illuminate\Http\Request $reques
     $pass = $request->input('pass');
 
     if ($userid && $pass) {
-        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upcart.asp?userid={$userid}&pass={$pass}&id={$productId}&id2={$quantity}";
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upcart?userid={$userid}&pass={$pass}&id={$productId}&id2={$quantity}";
     } else {
-        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upgiohang.asp?IDPart={$productId}&id={$cartCookie}&id1={$quantity}";
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upgiohang?IDPart={$productId}&id={$cartCookie}&id1={$quantity}";
     }
 
     $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);

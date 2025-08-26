@@ -144,7 +144,8 @@
                     </p>
 
                     <div class="product-actions">
-                        <button class="btn btn-primary btn-lg" onclick="addToCart('{{ $product['id'] }}', '{{ addslashes($product['tieude'] ?? '') }}', {{ $product['gia'] ?? 0 }}, '{{ $product['hinhdaidien'] ?? '' }}')">
+                        <?php $externalId = $product['IDPart'] ?? ($product['idpart'] ?? ($product['external_id'] ?? ($product['externalId'] ?? ($product['id'] ?? '')))); ?>
+                        <button class="btn btn-primary btn-lg" onclick="addToCart('{{ $externalId }}', '{{ addslashes($product['tieude'] ?? '') }}', {{ $product['gia'] ?? 0 }}, '{{ $product['hinhdaidien'] ?? '' }}')">
                                     🛒 Thêm vào giỏ hàng
                                 </button>
                         <button class="btn-wishlist"
@@ -198,198 +199,16 @@
                     Hãy thử tìm kiếm với từ khóa khác hoặc xem tất cả sản phẩm
                     @endif
                 </p>
-                <div class="no-products-actions">
-                    <a href="{{ route('products.index') }}" class="btn btn-primary">
-                        <i class="bi bi-house"></i> Về trang chủ
-                    </a>
-                    <a href="{{ route('filters.index') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-funnel"></i> Sử dụng bộ lọc
-                    </a>
-                </div>
+                <a href="{{ route('products.index') }}" class="btn btn-primary">Xem sản phẩm</a>
             </div>
         </div>
         @endif
     </section>
 
-    <!-- Features Section -->
-    <section class="features-section mt-5">
-        <div class="row">
-            <div class="col-md-3 col-sm-6 mb-4">
-                <div class="feature-card text-center">
-                    <!-- <div class="feature-icon">
-                        <i class="bi bi-shield-check"></i>
-                    </div> -->
-                    <h4>Chất lượng đảm bảo</h4>
-                    <p>Sản phẩm chính hãng, bảo hành chính thức</p>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-4">
-                <div class="feature-card text-center">
-                    <!-- <div class="feature-icon">
-                        <i class="bi bi-truck"></i>
-                    </div> -->
-                    <h4>Giao hàng nhanh chóng</h4>
-                    <p>Giao hàng toàn quốc trong 24-48 giờ</p>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-4">
-                <div class="feature-card text-center">
-                    <!-- <div class="feature-icon">
-                        <i class="bi bi-headset"></i>
-                    </div> -->
-                    <h4>Hỗ trợ 24/7</h4>
-                    <p>Đội ngũ tư vấn chuyên nghiệp</p>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-4">
-                <div class="feature-card text-center">
-                    <!-- <div class="feature-icon">
-                        <i class="bi bi-arrow-repeat"></i>
-                    </div> -->
-                    <h4>Đổi trả dễ dàng</h4>
-                    <p>Chính sách đổi trả trong 30 ngày</p>
-                </div>
-            </div>
-        </div>
-        <div class="container my-5">
-            <h2 class="text-center mb-4">Bản đồ</h2>
-            <div class="full-height full-width googlemap">
-                <iframe frameborder="0" height="400" src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d3919.4586764522687!2d106.64606400000001!3d10.776139!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752ebbf753cdd5%3A0xcc86f2c52d97c5af!2zVGhp4bq_dCBr4bq_IHdlYiBDaOG7k2kgWGFuaA!5e0!3m2!1svi!2sus!4v1491785812225" style="border:0;width:100%" allowfullscreen></iframe>
-            </div>
-        </div>
-    </section>
+    <!-- News Section -->
+    @include('news.index_part')
+
 </div>
-
-<!-- Quick View Modal -->
-<div class="modal fade" id="quickViewModal" tabindex="-1" aria-labelledby="quickViewModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="quickViewModalLabel">Xem nhanh sản phẩm</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="product-image-gallery">
-                            <img src="" alt="Product" class="img-fluid quick-view-image mb-3" id="quickViewMainImage">
-                            <div class="thumbnail-images d-flex gap-2" id="quickViewThumbnails">
-                                <!-- Thumbnail images will be populated here -->
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="product-details">
-                            <h4 class="quick-view-title mb-3"></h4>
-
-                            <div class="product-meta mb-3">
-                                <div class="category-badge mb-2">
-                                    <span class="badge bg-primary" id="quickViewCategory"></span>
-                                </div>
-                                <div class="rating-display" id="quickViewRating">
-                                    <!-- Rating stars will be populated here -->
-                                </div>
-                            </div>
-
-                            <div class="quick-view-price mb-3">
-                                <div class="current-price-display" id="quickViewCurrentPrice"></div>
-                                <div class="old-price-display" id="quickViewOldPrice"></div>
-                            </div>
-
-                            <div class="product-specs mb-3" id="quickViewSpecs">
-                                <!-- Product specifications will be populated here -->
-                            </div>
-
-                            <p class="quick-view-description mb-4"></p>
-
-                            <div class="quick-view-actions">
-                                <button class="btn btn-primary btn-lg me-2" id="quickViewAddToCart">
-                                    <i class="bi bi-cart-plus"></i> Thêm vào giỏ hàng
-                                </button>
-                                <button class="btn btn-outline-danger btn-lg me-2" id="quickViewWishlist">
-                                    <i class="bi bi-heart"></i> Yêu thích
-                                </button>
-                                <a href="" class="btn btn-outline-primary btn-lg" id="quickViewDetailLink">
-                                    <i class="bi bi-eye"></i> Xem chi tiết
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add to Cart Success Toast -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="addToCartToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-            <i class="bi bi-check-circle-fill text-success me-2"></i>
-            <strong class="me-auto">Thành công!</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">
-            Sản phẩm đã được thêm vào giỏ hàng!
-        </div>
-    </div>
-</div>
-
-<!-- News Section -->
-@if(isset($news) && $news->count() > 0)
-<section class="news-section mt-5">
-    <div class="container">
-        <div class="section-header text-center mb-4">
-            <h2 class="section-title">
-                <i class="bi bi-newspaper"></i> Tin tức công nghệ
-            </h2>
-            <p class="section-subtitle">Cập nhật những tin tức mới nhất về công nghệ</p>
-        </div>
-
-        <div class="row">
-            @foreach($news->take(6) as $newsItem)
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="news-card card h-100 shadow-sm">
-                    <div class="news-image-container" style="height: 200px; overflow: hidden;">
-                        <img src="{{ $newsItem['hinhdaidien'] ?? 'https://via.placeholder.com/300x200?text=No+Image' }}"
-                            alt="Ảnh tin tức"
-                            class="card-img-top"
-                            style="width: 100%; height: 100%; object-fit: cover;">
-                    </div>
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">
-                            <a href="{{ route('news.show', (string)$newsItem['id']) }}" class="text-decoration-none">
-                                {{ \Illuminate\Support\Str::limit($newsItem['tieude'] ?? 'Không có tiêu đề', 80, '...') }}
-                            </a>
-                        </h5>
-                        <p class="card-text flex-grow-1">
-                            {{ \Illuminate\Support\Str::limit($newsItem['mota'] ?? $newsItem['noidungtomtat'] ?? 'Không có mô tả', 120, '...') }}
-                        </p>
-                        <div class="mt-auto">
-                            <small class="text-muted">
-                                Ngày đăng: {{ $newsItem['ngay'] ?? $newsItem['ngaydang'] ?? 'N/A' }}
-                            </small>
-                            <div class="mt-2">
-                                <a href="{{ route('news.show', (string)$newsItem['id']) }}" class="btn btn-outline-primary btn-sm">
-                                    Đọc thêm
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endforeach
-        </div>
-
-        <div class="text-center mt-4">
-            <a href="{{ route('news.index') }}" class="btn btn-primary">
-                <i class="bi bi-arrow-right"></i> Xem tất cả tin tức
-            </a>
-        </div>
-</section>
-@endif
-</div>
-
 @endsection
 
 @push('scripts')
