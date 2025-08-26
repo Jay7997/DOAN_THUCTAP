@@ -41,6 +41,8 @@ Route::get('/cart/add/{id}', [CartController::class, 'add'])->name('cart.add');
 Route::post('/cart/add', [CartController::class, 'addPost'])->name('cart.add.post');
 Route::post('/cart/update', [CartController::class, 'update'])->name('cart.update');
 Route::delete('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
+// POST alias in case method spoofing is not applied by client
+Route::post('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove.post');
 
 // Thanh toán
 Route::get('/payment', [PaymentController::class, 'showPaymentForm'])->name('payment.form');
