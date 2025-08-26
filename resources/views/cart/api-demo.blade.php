@@ -105,19 +105,20 @@
         </div>
         <div class="card-body">
             <p><strong>Nếu bạn gặp lỗi:</strong> <code>{"thongbao": "Dữ liệu không tồn tại", "maloi": "1", "loi": "1234"}</code></p>
-            <p><strong>Nguyên nhân có thể:</strong></p>
+            <p><strong>Nguyên nhân phổ biến:</strong></p>
             <ul>
-                <li>Server API bên ngoài đang offline hoặc bảo trì</li>
-                <li>Endpoint URL không chính xác (.asp vs không .asp)</li>
-                <li>Cookie không hợp lệ hoặc đã hết hạn</li>
-                <li>Sản phẩm ID không tồn tại trong hệ thống</li>
+                <li><strong>ID sản phẩm không đúng:</strong> 60009 có thể không tồn tại, cần dùng slug như "singpc-aio-m24ei5128m5-w-..."</li>
+                <li><strong>Cookie chưa được set:</strong> Phải lấy cookie trước khi thao tác</li>
+                <li><strong>Sản phẩm chưa được thêm:</strong> Chỉ có thể xóa/update sản phẩm đã có trong giỏ</li>
+                <li><strong>Format ID không đúng:</strong> API có thể cần slug thay vì numeric ID</li>
             </ul>
-            <p><strong>Cách khắc phục:</strong></p>
+            <p><strong>Hướng dẫn thao tác đúng:</strong></p>
             <ol>
-                <li>Click "Test API trực tiếp" để kiểm tra kết nối</li>
-                <li>Click "Lấy Cookie" để lấy cookie mới</li>
-                <li>Thử với ID sản phẩm khác (vd: 60001, 60002, 60003)</li>
-                <li>Xem logs trong console để debug chi tiết</li>
+                <li><strong>Lấy cookie trước:</strong> Click "Lấy Cookie" → chờ response thành công</li>
+                <li><strong>Chọn sản phẩm có sẵn:</strong> Dùng dropdown để chọn ID thực từ hệ thống</li>
+                <li><strong>Thêm vào giỏ trước:</strong> Thêm sản phẩm trước khi xóa/update</li>
+                <li><strong>Kiểm tra giỏ hàng:</strong> Xem "Giỏ hàng hiện tại" để confirm</li>
+                <li><strong>Debug khi cần:</strong> Dùng "Test API trực tiếp" để troubleshoot</li>
             </ol>
         </div>
     </div>
@@ -174,8 +175,26 @@
             <p><strong>Đã đăng nhập:</strong> /ww1/save.addtocart?userid&pass&id=mã_sản_phẩm</p>
             <p><strong>Chưa đăng nhập:</strong> /ww1/addgiohang?IDPart=mã_sản_phẩm&id=cookie_DathangMabaogia</p>
             
-            <input type="text" class="form-control" id="add-product-id" placeholder="Mã sản phẩm (ví dụ: 60001)" value="60001">
+            <div class="row">
+                <div class="col-md-6">
+                    <label>Mã sản phẩm:</label>
+                    <input type="text" class="form-control" id="add-product-id" placeholder="Ví dụ: singpc-aio-m24ei5128m5-w-i5-124008gb512gb238-inch-full-hdban-phimchuotwin11pro" value="">
+                </div>
+                <div class="col-md-6">
+                    <label>Hoặc chọn từ danh sách:</label>
+                    <select class="form-control" id="product-select" onchange="updateProductId()">
+                        <option value="">-- Chọn sản phẩm --</option>
+                        <option value="singpc-aio-m24ei5128m5-w-i5-124008gb512gb238-inch-full-hdban-phimchuotwin11pro">SingPC AIO M24Ei5128M5-W</option>
+                        <option value="60001">ID: 60001</option>
+                        <option value="60002">ID: 60002</option>
+                        <option value="60003">ID: 60003</option>
+                    </select>
+                </div>
+            </div>
             <button class="btn btn-success" onclick="addToCart()">Thêm vào giỏ hàng</button>
+            <button class="btn btn-info" onclick="copyAddedProductId()" id="copy-product-btn" style="display:none;">
+                📋 Copy ID để xóa/update
+            </button>
             <div class="result-area" id="add-cart-result"></div>
         </div>
     </div>
@@ -189,7 +208,8 @@
             <p><strong>Đã đăng nhập:</strong> /ww1/remove.listcart?userid&pass&id=mã_sản_phẩm</p>
             <p><strong>Chưa đăng nhập:</strong> /ww1/removegiohang?IDPart=mã_sản_phẩm&id=cookie_DathangMabaogia</p>
             
-            <input type="text" class="form-control" id="remove-product-id" placeholder="Mã sản phẩm" value="60001">
+            <input type="text" class="form-control" id="remove-product-id" placeholder="Mã sản phẩm" value="">
+            <small class="text-muted">Sử dụng cùng ID như đã thêm vào giỏ hàng</small>
             <button class="btn btn-danger" onclick="removeFromCart()">Xóa khỏi giỏ hàng</button>
             <div class="result-area" id="remove-cart-result"></div>
         </div>
@@ -204,8 +224,9 @@
             <p><strong>Đã đăng nhập:</strong> /ww1/upcart?userid&pass&id=mã_sản_phẩm&id2=số_lượng_mới</p>
             <p><strong>Chưa đăng nhập:</strong> /ww1/upgiohang?IDPart=mã_sản_phẩm&id=cookie_DathangMabaogia&id1=số_lượng_mới</p>
             
-            <input type="text" class="form-control" id="update-product-id" placeholder="Mã sản phẩm" value="60001">
+            <input type="text" class="form-control" id="update-product-id" placeholder="Mã sản phẩm" value="">
             <input type="number" class="form-control" id="update-quantity" placeholder="Số lượng mới" value="2" min="1">
+            <small class="text-muted">Sử dụng cùng ID như đã thêm vào giỏ hàng</small>
             <button class="btn btn-primary" onclick="updateQuantity()">Cập nhật số lượng</button>
             <div class="result-area" id="update-cart-result"></div>
         </div>
@@ -217,7 +238,7 @@
             7. Thao tác với Wishlist
         </div>
         <div class="card-body">
-            <input type="text" class="form-control" id="wishlist-product-id" placeholder="Mã sản phẩm" value="60001">
+            <input type="text" class="form-control" id="wishlist-product-id" placeholder="Mã sản phẩm" value="">
             <button class="btn btn-success" onclick="addToWishlist()">Thêm vào yêu thích</button>
             <button class="btn btn-danger" onclick="removeFromWishlist()">Xóa khỏi yêu thích</button>
             <div class="result-area" id="wishlist-result"></div>
@@ -276,11 +297,35 @@ async function getCurrentWishlist() {
     }
 }
 
+// Global variable để store added product ID
+let lastAddedProductId = null;
+
+// Copy added product ID to other fields
+function copyAddedProductId() {
+    if (lastAddedProductId) {
+        document.getElementById('remove-product-id').value = lastAddedProductId;
+        document.getElementById('update-product-id').value = lastAddedProductId;
+        document.getElementById('wishlist-product-id').value = lastAddedProductId;
+        alert(`Đã copy ID "${lastAddedProductId}" vào các field khác`);
+    }
+}
+
 // 4. Thêm vào giỏ hàng
 async function addToCart() {
     try {
         const productId = document.getElementById('add-product-id').value;
+        
+        if (!productId) {
+            document.getElementById('add-cart-result').textContent = 'Vui lòng nhập mã sản phẩm';
+            return;
+        }
+        
         const cartCookie = getCookieValue('DathangMabaogia');
+        
+        if (!cartCookie) {
+            document.getElementById('add-cart-result').textContent = 'Vui lòng lấy cookie trước khi thao tác';
+            return;
+        }
         
         @if(Auth::check())
             // Đã đăng nhập
@@ -292,6 +337,12 @@ async function addToCart() {
         
         const data = await response.json();
         document.getElementById('add-cart-result').textContent = JSON.stringify(data, null, 2);
+        
+        // If successful, store product ID and show copy button
+        if (data && (!data.maloi || data.maloi != "1")) {
+            lastAddedProductId = productId;
+            document.getElementById('copy-product-btn').style.display = 'inline-block';
+        }
     } catch (error) {
         document.getElementById('add-cart-result').textContent = 'Lỗi: ' + error.message;
     }
@@ -301,7 +352,18 @@ async function addToCart() {
 async function removeFromCart() {
     try {
         const productId = document.getElementById('remove-product-id').value;
+        
+        if (!productId) {
+            document.getElementById('remove-cart-result').textContent = 'Vui lòng nhập mã sản phẩm';
+            return;
+        }
+        
         const cartCookie = getCookieValue('DathangMabaogia');
+        
+        if (!cartCookie) {
+            document.getElementById('remove-cart-result').textContent = 'Vui lòng lấy cookie trước khi thao tác';
+            return;
+        }
         
         @if(Auth::check())
             // Đã đăng nhập
@@ -323,7 +385,23 @@ async function updateQuantity() {
     try {
         const productId = document.getElementById('update-product-id').value;
         const quantity = document.getElementById('update-quantity').value;
+        
+        if (!productId) {
+            document.getElementById('update-cart-result').textContent = 'Vui lòng nhập mã sản phẩm';
+            return;
+        }
+        
+        if (!quantity || quantity < 1) {
+            document.getElementById('update-cart-result').textContent = 'Vui lòng nhập số lượng hợp lệ (>= 1)';
+            return;
+        }
+        
         const cartCookie = getCookieValue('DathangMabaogia');
+        
+        if (!cartCookie) {
+            document.getElementById('update-cart-result').textContent = 'Vui lòng lấy cookie trước khi thao tác';
+            return;
+        }
         
         @if(Auth::check())
             // Đã đăng nhập
@@ -407,9 +485,48 @@ function clearCookies() {
     alert('Đã xóa cookies');
 }
 
+// Update product ID từ dropdown
+function updateProductId() {
+    const select = document.getElementById('product-select');
+    const input = document.getElementById('add-product-id');
+    if (select.value) {
+        input.value = select.value;
+    }
+}
+
+// Load real products từ API
+async function loadRealProducts() {
+    try {
+        const response = await fetch('/debug/products');
+        const data = await response.json();
+        
+        if (data.products_id_check && data.products_id_check.length > 0) {
+            const select = document.getElementById('product-select');
+            
+            // Clear existing options except first one
+            while (select.children.length > 1) {
+                select.removeChild(select.lastChild);
+            }
+            
+            // Add real products
+            data.products_id_check.forEach(product => {
+                if (product.id && product.id !== 'NULL') {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.title.substring(0, 50)}... (ID: ${product.id})`;
+                    select.appendChild(option);
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading real products:', error);
+    }
+}
+
 // Cập nhật hiển thị cookie khi trang load
 document.addEventListener('DOMContentLoaded', function() {
     updateCookieDisplay();
+    loadRealProducts(); // Load real products
 });
 </script>
 @endsection

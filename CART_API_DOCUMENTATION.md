@@ -139,6 +139,43 @@ Hệ thống API giỏ hàng đã được xây dựng theo đúng yêu cầu v�
 
 Truy cập `/cart/api-demo` để xem demo tương tác với tất cả các API endpoints.
 
+### 🎯 **Hướng dẫn sử dụng Demo:**
+
+1. **Lấy Cookie trước tiên:**
+   - Click "Lấy Cookie" và đợi response thành công
+   - Cookie sẽ được lưu 365 ngày
+
+2. **Chọn sản phẩm đúng:**
+   - Dùng dropdown để chọn sản phẩm có sẵn trong hệ thống
+   - Hoặc nhập slug ID (không phải numeric ID)
+
+3. **Thao tác theo thứ tự:**
+   - Thêm sản phẩm vào giỏ hàng trước
+   - Kiểm tra "Giỏ hàng hiện tại" để confirm
+   - Sau đó mới xóa/cập nhật
+
+4. **Copy ID tự động:**
+   - Sau khi thêm thành công, click "📋 Copy ID để xóa/update"
+   - ID sẽ được copy tự động vào các field khác
+
+5. **Debug khi cần:**
+   - Dùng "Test API trực tiếp" để troubleshoot
+   - Check console logs để xem chi tiết
+
+### ⚠️ **Lỗi "Dữ liệu không tồn tại":**
+
+**Nguyên nhân phổ biến:**
+- ID sản phẩm không đúng (cần slug, không phải số)
+- Cookie chưa được set
+- Sản phẩm chưa có trong giỏ hàng
+- Format tham số không đúng
+
+**Giải pháp:**
+1. Lấy cookie trước khi thao tác
+2. Chọn sản phẩm từ dropdown
+3. Thêm sản phẩm trước khi xóa/update
+4. Sử dụng cùng ID đã thêm thành công
+
 ## Xử lý Authentication
 
 Hệ thống tự động xác định trạng thái đăng nhập:
