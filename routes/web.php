@@ -231,12 +231,24 @@ Route::get('/ww1/cookie.mabaogia', function () {
 
 // 2. Giỏ hàng hiện tại
 Route::get('/ww1/giohanghientai', function (\Illuminate\Http\Request $request) {
-    $cartCookie = $request->cookie('DathangMabaogia');
+    // Lấy cookie từ parameter hoặc request cookie
+    $cartCookie = $request->input('cookie') ?: $request->cookie('DathangMabaogia');
+    
+    \Illuminate\Support\Facades\Log::info('Current cart cookie check', [
+        'cookie_from_request' => $request->cookie('DathangMabaogia'),
+        'cookie_from_param' => $request->input('cookie'),
+        'final_cookie' => $cartCookie,
+        'all_cookies' => $request->cookies->all()
+    ]);
     
     if (!$cartCookie) {
         return response()->json([
             'error' => 'Không có cookie DathangMabaogia. Vui lòng lấy cookie trước.',
-            'maloi' => '1'
+            'maloi' => '1',
+            'debug_info' => [
+                'request_cookies' => $request->cookies->all(),
+                'suggestion' => 'Thử thêm ?cookie=5327 vào URL'
+            ]
         ], 400);
     }
     
@@ -258,12 +270,22 @@ Route::get('/ww1/giohanghientai', function (\Illuminate\Http\Request $request) {
 
 // 3. Yêu thích hoặc theo dõi hiện tại
 Route::get('/ww1/wishlisthientai', function (\Illuminate\Http\Request $request) {
-    $wishlistCookie = $request->cookie('WishlistMabaogia');
+    // Lấy cookie từ parameter hoặc request cookie
+    $wishlistCookie = $request->input('cookie') ?: $request->cookie('WishlistMabaogia');
+    
+    \Illuminate\Support\Facades\Log::info('Current wishlist cookie check', [
+        'cookie_from_request' => $request->cookie('WishlistMabaogia'),
+        'cookie_from_param' => $request->input('cookie'),
+        'final_cookie' => $wishlistCookie
+    ]);
     
     if (!$wishlistCookie) {
         return response()->json([
             'error' => 'Không có cookie WishlistMabaogia. Vui lòng lấy cookie trước.',
-            'maloi' => '1'
+            'maloi' => '1',
+            'debug_info' => [
+                'suggestion' => 'Thử thêm ?cookie=5328 vào URL'
+            ]
         ], 400);
     }
     

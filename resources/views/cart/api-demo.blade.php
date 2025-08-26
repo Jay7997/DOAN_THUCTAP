@@ -197,6 +197,7 @@
             <button class="btn btn-info" onclick="copyAddedProductId()" id="copy-product-btn" style="display:none;">
                 📋 Copy ID để xóa/update
             </button>
+            <button class="btn btn-warning" onclick="testWorkflow()">🚀 Test Full Workflow</button>
             <div class="result-area" id="add-cart-result"></div>
         </div>
     </div>
@@ -372,7 +373,19 @@ async function getCookiesManual() {
 // 2. Lấy giỏ hàng hiện tại
 async function getCurrentCart() {
     try {
-        const response = await fetch('/ww1/giohanghientai');
+        // Lấy cookie và gửi qua parameter để đảm bảo
+        const cartCookie = getCookieValue('DathangMabaogia');
+        console.log('Getting current cart with cookie:', cartCookie);
+        
+        let url = '/ww1/giohanghientai';
+        if (cartCookie) {
+            url += `?cookie=${cartCookie}`;
+        }
+        
+        const response = await fetch(url, {
+            credentials: 'include' // Vẫn include cookies
+        });
+        
         const data = await response.json();
         document.getElementById('current-cart-result').textContent = JSON.stringify(data, null, 2);
     } catch (error) {
@@ -383,7 +396,19 @@ async function getCurrentCart() {
 // 3. Lấy wishlist hiện tại
 async function getCurrentWishlist() {
     try {
-        const response = await fetch('/ww1/wishlisthientai');
+        // Lấy cookie và gửi qua parameter để đảm bảo
+        const wishlistCookie = getCookieValue('WishlistMabaogia');
+        console.log('Getting current wishlist with cookie:', wishlistCookie);
+        
+        let url = '/ww1/wishlisthientai';
+        if (wishlistCookie) {
+            url += `?cookie=${wishlistCookie}`;
+        }
+        
+        const response = await fetch(url, {
+            credentials: 'include'
+        });
+        
         const data = await response.json();
         document.getElementById('current-wishlist-result').textContent = JSON.stringify(data, null, 2);
     } catch (error) {
@@ -401,6 +426,22 @@ function copyAddedProductId() {
         document.getElementById('update-product-id').value = lastAddedProductId;
         document.getElementById('wishlist-product-id').value = lastAddedProductId;
         alert(`Đã copy ID "${lastAddedProductId}" vào các field khác`);
+    }
+}
+
+// Auto-sync product IDs when dropdown changes
+function updateProductId() {
+    const select = document.getElementById('product-select');
+    const addInput = document.getElementById('add-product-id');
+    if (select.value) {
+        addInput.value = select.value;
+        
+        // Also update other fields for convenience
+        document.getElementById('remove-product-id').value = select.value;
+        document.getElementById('update-product-id').value = select.value;
+        document.getElementById('wishlist-product-id').value = select.value;
+        
+        console.log('Auto-synced product ID:', select.value);
     }
 }
 
@@ -592,14 +633,7 @@ function debugCookies() {
     alert(`Cookie debug info logged to console.\n\nAll cookies: ${document.cookie}\n\nDathangMabaogia: ${getCookieValue('DathangMabaogia')}\nWishlistMabaogia: ${getCookieValue('WishlistMabaogia')}`);
 }
 
-// Update product ID từ dropdown
-function updateProductId() {
-    const select = document.getElementById('product-select');
-    const input = document.getElementById('add-product-id');
-    if (select.value) {
-        input.value = select.value;
-    }
-}
+
 
 // Load real products từ API
 async function loadRealProducts() {
@@ -627,6 +661,46 @@ async function loadRealProducts() {
         }
     } catch (error) {
         console.error('Error loading real products:', error);
+    }
+}
+
+// Test full workflow
+async function testWorkflow() {
+    const resultDiv = document.getElementById('add-cart-result');
+    resultDiv.textContent = '🚀 Bắt đầu test workflow...\n';
+    
+    try {
+        // 1. Lấy cookie
+        resultDiv.textContent += '1️⃣ Lấy cookie...\n';
+        await getCookiesManual();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 2. Chọn product từ dropdown
+        const select = document.getElementById('product-select');
+        if (select.options.length > 1) {
+            select.selectedIndex = 1; // Chọn option đầu tiên
+            updateProductId();
+            resultDiv.textContent += `2️⃣ Chọn sản phẩm: ${select.value}\n`;
+        }
+        
+        // 3. Check cart
+        resultDiv.textContent += '3️⃣ Kiểm tra giỏ hàng...\n';
+        await getCurrentCart();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 4. Add to cart
+        resultDiv.textContent += '4️⃣ Thêm vào giỏ hàng...\n';
+        await addToCart();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 5. Check cart again
+        resultDiv.textContent += '5️⃣ Kiểm tra giỏ hàng sau khi thêm...\n';
+        await getCurrentCart();
+        
+        resultDiv.textContent += '\n✅ Test workflow hoàn thành! Kiểm tra kết quả ở các section khác.';
+        
+    } catch (error) {
+        resultDiv.textContent += `\n❌ Lỗi: ${error.message}`;
     }
 }
 
