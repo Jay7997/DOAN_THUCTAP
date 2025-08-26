@@ -138,6 +138,14 @@ Route::get('/api/proxy-cart-current', function (\Illuminate\Http\Request $reques
         ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 });
 
+// Aliases to avoid 404 due to caching/path mismatches
+Route::get('/cart/current', function (\Illuminate\Http\Request $request) {
+    return app()->handle(\Illuminate\Http\Request::create('/api/proxy-cart-current', 'GET', $request->all()));
+});
+Route::get('/api/cart/current', function (\Illuminate\Http\Request $request) {
+    return app()->handle(\Illuminate\Http\Request::create('/api/proxy-cart-current', 'GET', $request->all()));
+});
+
 // Thêm vào giỏ hàng (đăng nhập hoặc chưa đăng nhập)
 Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) {
     $productId = $request->input('productId');
