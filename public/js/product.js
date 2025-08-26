@@ -206,7 +206,8 @@ $(document).ready(function () {
             method: "POST",
             dataType: "json",
             data: {
-                productId: productId
+                productId: productId,
+                cartCookie: (typeof getCookie === 'function' ? getCookie('DathangMabaogia') : null)
             },
             success: function () {
                 showNotification(
