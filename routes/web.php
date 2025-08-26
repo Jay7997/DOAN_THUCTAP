@@ -200,10 +200,28 @@ Route::get('/ww1/cookie.mabaogia', function () {
     if (is_array($responseData)) {
         foreach ($responseData as $item) {
             if (isset($item['DathangMabaogia'])) {
-                $response->cookie('DathangMabaogia', $item['DathangMabaogia'], 365 * 24 * 60); // 365 ngày
+                $response->cookie(
+                    'DathangMabaogia', 
+                    $item['DathangMabaogia'], 
+                    365 * 24 * 60, // 365 ngày
+                    '/',           // path
+                    null,          // domain
+                    false,         // secure (false for http)
+                    false          // httpOnly (false để JS có thể đọc)
+                );
+                Log::info('Setting DathangMabaogia cookie', ['value' => $item['DathangMabaogia']]);
             }
             if (isset($item['WishlistMabaogia'])) {
-                $response->cookie('WishlistMabaogia', $item['WishlistMabaogia'], 365 * 24 * 60); // 365 ngày
+                $response->cookie(
+                    'WishlistMabaogia', 
+                    $item['WishlistMabaogia'], 
+                    365 * 24 * 60, // 365 ngày
+                    '/',           // path
+                    null,          // domain
+                    false,         // secure (false for http)
+                    false          // httpOnly (false để JS có thể đọc)
+                );
+                Log::info('Setting WishlistMabaogia cookie', ['value' => $item['WishlistMabaogia']]);
             }
         }
     }

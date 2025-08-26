@@ -130,6 +130,7 @@
         <p><strong>Trạng thái đăng nhập:</strong> <span id="auth-status">{{ Auth::check() ? 'Đã đăng nhập' : 'Chưa đăng nhập' }}</span></p>
         <button class="btn btn-primary" onclick="testDirectAPI()">Test API trực tiếp</button>
         <button class="btn btn-primary" onclick="clearCookies()">Xóa Cookies</button>
+        <button class="btn btn-warning" onclick="debugCookies()">🔍 Debug Cookies</button>
     </div>
 
     <!-- Lấy Cookie -->
@@ -139,7 +140,8 @@
         </div>
         <div class="card-body">
             <p>Lần đầu truy cập để lấy cookie cho DathangMabaogia đặt hàng hoặc WishlistMabaogia yêu thích</p>
-            <button class="btn btn-primary" onclick="getCookies()">Lấy Cookie</button>
+            <button class="btn btn-primary" onclick="getCookies()">Lấy Cookie (Server Set)</button>
+            <button class="btn btn-success" onclick="getCookiesManual()">🔧 Lấy Cookie (Manual Set)</button>
             <div class="result-area" id="cookie-result"></div>
         </div>
     </div>
@@ -247,11 +249,22 @@
 </div>
 
 <script>
-// Lấy cookies từ browser
+// Lấy cookies từ browser với debug
 function getCookieValue(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
+    
+    // Debug: log all cookies
+    console.log('All cookies:', document.cookie);
+    console.log(`Looking for cookie: ${name}`);
+    
+    if (parts.length === 2) {
+        const cookieValue = parts.pop().split(';').shift();
+        console.log(`Found cookie ${name}:`, cookieValue);
+        return cookieValue;
+    }
+    
+    console.log(`Cookie ${name} not found`);
     return null;
 }
 
@@ -264,13 +277,94 @@ function updateCookieDisplay() {
 // 1. Lấy cookie
 async function getCookies() {
     try {
-        const response = await fetch('/ww1/cookie.mabaogia');
+        console.log('Calling cookie API...');
+        
+        const response = await fetch('/ww1/cookie.mabaogia', {
+            method: 'GET',
+            credentials: 'include', // Important: include cookies in request
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        console.log('Cookie API response status:', response.status);
+        console.log('Cookie API response headers:', response.headers);
+        
         const data = await response.json();
+        console.log('Cookie API response data:', data);
+        
         document.getElementById('cookie-result').textContent = JSON.stringify(data, null, 2);
         
+        // Force manual cookie setting if server doesn't set them properly
+        if (Array.isArray(data)) {
+            data.forEach(item => {
+                if (item.DathangMabaogia) {
+                    document.cookie = `DathangMabaogia=${item.DathangMabaogia}; max-age=${365*24*60*60}; path=/`;
+                    console.log('Manually set DathangMabaogia cookie:', item.DathangMabaogia);
+                }
+                if (item.WishlistMabaogia) {
+                    document.cookie = `WishlistMabaogia=${item.WishlistMabaogia}; max-age=${365*24*60*60}; path=/`;
+                    console.log('Manually set WishlistMabaogia cookie:', item.WishlistMabaogia);
+                }
+            });
+        }
+        
         // Cập nhật hiển thị cookie sau khi lấy
-        setTimeout(updateCookieDisplay, 1000);
+        setTimeout(() => {
+            updateCookieDisplay();
+            console.log('Updated cookie display');
+        }, 500);
+        
     } catch (error) {
+        console.error('Cookie API error:', error);
+        document.getElementById('cookie-result').textContent = 'Lỗi: ' + error.message;
+    }
+}
+
+// 1b. Lấy cookie và set manual (fallback method)
+async function getCookiesManual() {
+    try {
+        console.log('Calling cookie API for manual setting...');
+        
+        const response = await fetch('/ww1/cookie.mabaogia', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        console.log('Cookie API response data:', data);
+        
+        document.getElementById('cookie-result').textContent = JSON.stringify(data, null, 2);
+        
+        // Always set cookies manually from response data
+        if (Array.isArray(data)) {
+            data.forEach(item => {
+                if (item.DathangMabaogia) {
+                    const cookieValue = `DathangMabaogia=${item.DathangMabaogia}; max-age=${365*24*60*60}; path=/; SameSite=Lax`;
+                    document.cookie = cookieValue;
+                    console.log('Set DathangMabaogia cookie:', cookieValue);
+                }
+                if (item.WishlistMabaogia) {
+                    const cookieValue = `WishlistMabaogia=${item.WishlistMabaogia}; max-age=${365*24*60*60}; path=/; SameSite=Lax`;
+                    document.cookie = cookieValue;
+                    console.log('Set WishlistMabaogia cookie:', cookieValue);
+                }
+            });
+            
+            // Force update display
+            setTimeout(() => {
+                updateCookieDisplay();
+                console.log('Force updated cookie display');
+                
+                // Show success message
+                document.getElementById('cookie-result').textContent = 
+                    JSON.stringify(data, null, 2) + '\n\n✅ Cookies đã được set thành công!';
+            }, 200);
+        }
+        
+    } catch (error) {
+        console.error('Manual cookie API error:', error);
         document.getElementById('cookie-result').textContent = 'Lỗi: ' + error.message;
     }
 }
@@ -483,6 +577,19 @@ function clearCookies() {
     document.cookie = 'WishlistMabaogia=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     updateCookieDisplay();
     alert('Đã xóa cookies');
+}
+
+// Debug cookies
+function debugCookies() {
+    console.log('=== COOKIE DEBUG ===');
+    console.log('All document.cookie:', document.cookie);
+    console.log('DathangMabaogia:', getCookieValue('DathangMabaogia'));
+    console.log('WishlistMabaogia:', getCookieValue('WishlistMabaogia'));
+    console.log('Current domain:', window.location.hostname);
+    console.log('Current path:', window.location.pathname);
+    console.log('===================');
+    
+    alert(`Cookie debug info logged to console.\n\nAll cookies: ${document.cookie}\n\nDathangMabaogia: ${getCookieValue('DathangMabaogia')}\nWishlistMabaogia: ${getCookieValue('WishlistMabaogia')}`);
 }
 
 // Update product ID từ dropdown
