@@ -6,6 +6,7 @@ use App\Services\ProductService;
 use App\Services\CartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
 class CartController extends Controller
 {
@@ -106,12 +107,57 @@ class CartController extends Controller
     }
 
 
-    public function view()
+    public function view(Request $request)
     {
+        // Ưu tiên hiển thị theo giỏ hàng ngoài (cookie DathangMabaogia)
+        $externalCart = [];
+        $externalTotal = 0;
+
+        try {
+            $cookie = $request->cookie('DathangMabaogia');
+            if ($cookie) {
+                $response = Http::withOptions(['verify' => false])
+                    ->withHeaders(['Cache-Control' => 'no-cache'])
+                    ->withCookies([
+                        'DathangMabaogia' => $cookie,
+                    ], 'demodienmay.125.atoz.vn')
+                    ->get('https://demodienmay.125.atoz.vn/ww1/giohanghientai.asp?ts=' . time());
+
+                if ($response->ok()) {
+                    $json = $response->json();
+                    if (!empty($json['items'])) {
+                        foreach ($json['items'] as $item) {
+                            $image = $item['image'] ?? '';
+                            if ($image && !str_starts_with($image, 'http')) {
+                                $image = 'https://demodienmay.125.atoz.vn' . $image;
+                            }
+                            $id = (string)($item['id'] ?? '');
+                            $qty = (int)($item['quantity'] ?? ($item['sl'] ?? 1));
+                            $price = (float)($item['price'] ?? 0);
+                            $externalCart[$id] = [
+                                'id' => $id,
+                                'tieude' => $item['partName'] ?? ($item['name'] ?? 'Sản phẩm'),
+                                'hinhdaidien' => $image,
+                                'gia' => $price,
+                                'quantity' => $qty,
+                            ];
+                            $externalTotal += $price * $qty;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Load external cart failed', ['error' => $e->getMessage()]);
+        }
+
+        $cartData = !empty($externalCart) ? $externalCart : $this->cartService->getCart();
+        $totalData = !empty($externalCart) ? $externalTotal : $this->cartService->getCartTotal();
+
         return view('cart.view', [
-            'cart' => $this->cartService->getCart(),
-            'total' => $this->cartService->getCartTotal(),
-            'quantity' => $this->cartService->getTotalQuantity(),
+            'cart' => $cartData,
+            'total' => $totalData,
+            'quantity' => !empty($externalCart) ? array_sum(array_column($externalCart, 'quantity')) : $this->cartService->getTotalQuantity(),
+            'title' => 'Giỏ hàng'
         ]);
     }
 
