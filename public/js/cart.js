@@ -160,21 +160,34 @@ function updateCartBadgeCount(count) {
 
 // ====== Bind common interactions if needed ======
 $(function () {
-	// Example: wire click handler for buttons with data-action
+	// Initialize badge from current external cart
+	cartFetchCurrent().done(function(r){
+		if (r) {
+			if (Array.isArray(r.items)) {
+				updateCartBadgeCount(r.items.length);
+			} else if (typeof r.sl !== 'undefined') {
+				updateCartBadgeCount(r.sl);
+			}
+		}
+	});
+
+	// Wire click handler for buttons with data-action
 	$(document).on("click", "[data-add-to-cart]", function (e) {
 		e.preventDefault();
 		var productId = $(this).data("add-to-cart");
 		cartAdd(productId)
-			.done(function (res) {
+			.done(function () {
 				showCartToast("Đã thêm vào giỏ hàng!");
-				// try to refresh count from current cart
-				cartFetchCurrent()
-					.done(function (r) {
-						if (r && typeof r.sl !== "undefined") {
+				// refresh count from current cart
+				cartFetchCurrent().done(function (r) {
+					if (r) {
+						if (Array.isArray(r.items)) {
+							updateCartBadgeCount(r.items.length);
+						} else if (typeof r.sl !== 'undefined') {
 							updateCartBadgeCount(r.sl);
 						}
-					})
-					.always(function () {});
+					}
+				});
 			})
 			.fail(function () {
 				showCartToast("Thêm vào giỏ thất bại!");
