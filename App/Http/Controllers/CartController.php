@@ -164,23 +164,51 @@ class CartController extends Controller
 
     public function update(Request $request)
     {
-        $productId = (int) $request->input('product_id');
+        $productId = (string) $request->input('product_id');
         $quantity = (int) $request->input('quantity');
 
-        $success = $this->cartService->updateCart($productId, $quantity);
+        $cookie = $request->cookie('DathangMabaogia');
+        if ($cookie) {
+            // Update external cart
+            try {
+                $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upgiohang?IDPart={$productId}&id={$cookie}&id1={$quantity}";
+                $res = Http::withOptions(['verify' => false])->get($apiUrl);
+                if ($res->ok()) {
+                    return redirect()->route('cart.view')->with('success', 'Cập nhật giỏ hàng thành công');
+                }
+            } catch (\Throwable $e) {
+                Log::warning('External cart update failed', ['error' => $e->getMessage()]);
+            }
+        }
 
+        // Fallback to session cart
+        $success = $this->cartService->updateCart((int)$productId, $quantity);
         if ($success) {
             return redirect()->route('cart.view')->with('success', 'Cập nhật giỏ hàng thành công');
         }
-
         return redirect()->route('cart.view')->with('error', 'Không tìm thấy sản phẩm trong giỏ');
     }
 
 
-    public function remove($productId)
+    public function remove(Request $request, $productId)
     {
-        $success = $this->cartService->removeFromCart($productId);
+        $productId = (string) $productId;
+        $cookie = $request->cookie('DathangMabaogia');
+        if ($cookie) {
+            // Remove from external cart
+            try {
+                $apiUrl = "https://demodienmay.125.atoz.vn/ww1/removegiohang?IDPart={$productId}&id={$cookie}";
+                $res = Http::withOptions(['verify' => false])->get($apiUrl);
+                if ($res->ok()) {
+                    return redirect()->route('cart.view')->with('success', 'Đã xóa sản phẩm khỏi giỏ hàng');
+                }
+            } catch (\Throwable $e) {
+                Log::warning('External cart remove failed', ['error' => $e->getMessage()]);
+            }
+        }
 
+        // Fallback to session cart
+        $success = $this->cartService->removeFromCart((int)$productId);
         return redirect()->route('cart.view')->with(
             $success ? 'success' : 'error',
             $success ? 'Đã xóa sản phẩm khỏi giỏ hàng' : 'Không tìm thấy sản phẩm trong giỏ'
