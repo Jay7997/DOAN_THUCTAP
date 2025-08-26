@@ -153,7 +153,7 @@
                 </thead>
                 <tbody>
                     @foreach ($cart as $id => $item)
-                        <tr>
+                        <tr id="row-cart-{{ $id }}">
                             <td>
                                 <div class="image-container">
                                     <img src="{{ $item['hinhdaidien'] ?? 'https://via.placeholder.com/300x200?text=No+Image' }}"
@@ -167,22 +167,16 @@
                             </td>
                             <td>{{ number_format($item['gia'], 0, ',', '.') }}đ</td>
                             <td>
-                                <form action="{{ route('cart.update') }}" method="POST" class="d-flex flex-column align-items-center">
-                                    @csrf
-                                    <input type="hidden" name="product_id" value="{{ $id }}">
-                                    <input type="number" name="quantity" value="{{ $item['quantity'] }}" min="1">
-                                    <button type="submit" class="btn btn-sm btn-primary mt-1">Cập nhật</button>
-                                </form>
+                                <div class="d-flex flex-column align-items-center">
+                                    <input type="number" class="form-control form-control-sm qty-input" data-id="{{ $id }}" value="{{ $item['quantity'] }}" min="1" style="width: 80px;">
+                                    <button class="btn btn-sm btn-primary mt-1 btn-update-qty" data-id="{{ $id }}">Cập nhật</button>
+                                </div>
                             </td>
                             <td>{{ number_format($item['gia'] * $item['quantity'], 0, ',', '.') }}đ</td>
                             <td>
-                                <form action="{{ route('cart.remove', $id) }}" method="POST">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-danger btn-sm" onclick="return confirm('Xoá sản phẩm này?')">
-                                        <i class="bi bi-trash"></i> Xoá
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-danger btn-sm btn-remove-cart" data-id="{{ $id }}">
+                                    <i class="bi bi-trash"></i> Xoá
+                                </button>
                             </td>
                         </tr>
                     @endforeach
@@ -198,4 +192,37 @@
         </div>
     @endif
 </div>
+
+<script>
+$(function(){
+    // Remove item via proxy and refresh UI
+    $(document).on('click', '.btn-remove-cart', function(){
+        var id = $(this).data('id');
+        cartRemove(id).done(function(res){
+            // After remove, refetch current external cart and then reload UI
+            cartFetchCurrent().done(function(r){
+                // Optimistic remove from DOM
+                $('#row-cart-' + id).fadeOut(200, function(){ $(this).remove(); });
+                // Full refresh to ensure totals are correct
+                setTimeout(function(){ window.location.reload(); }, 300);
+            });
+        }).fail(function(){
+            showCartToast('Xoá sản phẩm thất bại!');
+        });
+    });
+
+    // Update quantity via proxy and refresh UI
+    $(document).on('click', '.btn-update-qty', function(){
+        var id = $(this).data('id');
+        var qty = parseInt($(".qty-input[data-id='"+id+"']").val(), 10) || 1;
+        cartUpdate(id, qty).done(function(){
+            cartFetchCurrent().done(function(){
+                setTimeout(function(){ window.location.reload(); }, 300);
+            });
+        }).fail(function(){
+            showCartToast('Cập nhật số lượng thất bại!');
+        });
+    });
+});
+</script>
 @endsection
