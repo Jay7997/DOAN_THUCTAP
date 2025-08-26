@@ -126,10 +126,11 @@ Route::get('/cart/get-cookie', function () {
 Route::get('/api/proxy-cart-current', function (\Illuminate\Http\Request $request) {
     $cartCookie = $request->input('cartCookie') ?: $request->cookie('DathangMabaogia');
     $response = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+        ->withHeaders(['Cache-Control' => 'no-cache'])
         ->withCookies([
             'DathangMabaogia' => $cartCookie,
         ], 'demodienmay.125.atoz.vn')
-        ->get('https://demodienmay.125.atoz.vn/ww1/giohanghientai');
+        ->get('https://demodienmay.125.atoz.vn/ww1/giohanghientai.asp?ts=' . time());
 
     return response($response->body(), $response->status())
         ->header('Content-Type', 'application/json')
