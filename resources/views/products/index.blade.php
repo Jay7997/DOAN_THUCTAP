@@ -105,6 +105,9 @@
 
         <div class="product-grid">
             @foreach($data['products'] as $product)
+            @php
+                $productUrl = !empty($product['id']) ? $product['id'] : null;
+            @endphp
             <div class="product-card fade-in-up" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                 <div class="product-image-container">
                     <img src="{{ $product['hinhdaidien'] ?? asset('images/default-product.jpg') }}"
@@ -112,9 +115,9 @@
                         class="product-image lazyload"
                         loading="lazy">
                     <div class="product-overlay">
-                        @if(!empty($product['id']) && $product['id'] !== null)
+                        @if($productUrl)
                             <button class="btn-quick-view"
-                                data-product-id="{{ $product['id'] }}"
+                                data-product-id="{{ $productUrl }}"
                                 data-product-title="{{ $product['tieude'] ?? 'Sản phẩm' }}">
                                 <i class="bi bi-eye"></i>
                             </button>
@@ -128,8 +131,8 @@
 
                 <div class="product-info">
                     <h3 class="product-title">
-                        @if(!empty($product['id']) && $product['id'] !== null)
-                            <a href="{{ route('products.show', ['id' => $product['id']]) }}"
+                        @if($productUrl)
+                            <a href="{{ route('products.show', ['id' => $productUrl]) }}"
                                 class="product-link">
                                 {{ $product['tieude'] ?? 'Tên sản phẩm' }}
                             </a>
@@ -172,12 +175,12 @@
                     </p>
 
                     <div class="product-actions">
-                        @if(!empty($product['id']) && $product['id'] !== null)
-                            <button class="btn btn-primary btn-lg" onclick="addToCart('{{ $product['id'] }}', '{{ addslashes($product['tieude'] ?? '') }}', {{ $product['gia'] ?? 0 }}, '{{ $product['hinhdaidien'] ?? '' }}')">
+                        @if($productUrl)
+                            <button class="btn btn-primary btn-lg" onclick="addToCart('{{ $productUrl }}', '{{ addslashes($product['tieude'] ?? '') }}', {{ $product['gia'] ?? 0 }}, '{{ $product['hinhdaidien'] ?? '' }}')">
                                         🛒 Thêm vào giỏ hàng
                                     </button>
                             <button class="btn-wishlist"
-                                data-product-id="{{ $product['id'] }}"
+                                data-product-id="{{ $productUrl }}"
                                 title="Thêm vào yêu thích">
                                 <i class="bi bi-heart"></i>
                             </button>

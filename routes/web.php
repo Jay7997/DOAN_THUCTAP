@@ -96,31 +96,46 @@ Route::get('/debug/test-api', function () {
 // Debug route để xem dữ liệu products
 Route::get('/debug/products', function () {
     $productService = new \App\Services\ProductService();
-    $data = $productService->fetchData(10, 'product'); // Lấy 10 sản phẩm để test
+    $data = $productService->fetchData(5, 'product'); // Lấy 5 sản phẩm để test
     
     $debugInfo = [
         'total_products' => count($data['products'] ?? []),
-        'sample_products' => array_slice($data['products'] ?? [], 0, 3), // 3 sản phẩm đầu
-        'products_without_id' => [],
-        'all_product_keys' => []
+        'sample_product' => isset($data['products'][0]) ? $data['products'][0] : null, // 1 sản phẩm đầu
+        'product_fields' => isset($data['products'][0]) ? array_keys($data['products'][0]) : [],
+        'products_id_check' => []
     ];
     
-    foreach ($data['products'] ?? [] as $index => $product) {
-        if (empty($product['id']) || $product['id'] === null) {
-            $debugInfo['products_without_id'][] = [
-                'index' => $index,
-                'keys' => array_keys($product),
-                'title' => $product['tieude'] ?? 'No title'
-            ];
-        }
-        
-        if ($index === 0) {
-            $debugInfo['all_product_keys'] = array_keys($product);
-        }
+    // Kiểm tra 3 sản phẩm đầu
+    foreach (array_slice($data['products'] ?? [], 0, 3) as $index => $product) {
+        $debugInfo['products_id_check'][] = [
+            'index' => $index,
+            'id' => $product['id'] ?? 'NULL',
+            'id_type' => gettype($product['id'] ?? null),
+            'title' => $product['tieude'] ?? 'No title',
+            'has_slug' => isset($product['slug']),
+            'slug' => $product['slug'] ?? 'No slug'
+        ];
     }
     
     return response()->json($debugInfo, 200, [], JSON_PRETTY_PRINT);
 })->name('debug.products');
+
+// Debug route cụ thể cho product detail
+Route::get('/debug/product/{id}', function ($id) {
+    $productService = new \App\Services\ProductService();
+    
+    // Test với ID được truyền vào
+    $product = $productService->fetchProductDetail($id);
+    
+    return response()->json([
+        'input_id' => $id,
+        'id_type' => gettype($id),
+        'api_call_url' => "module.sanpham.chitiet.asp?id={$id}",
+        'product_result' => $product,
+        'has_error' => isset($product['error']),
+        'error_message' => $product['error'] ?? null
+    ], 200, [], JSON_PRETTY_PRINT);
+})->name('debug.product.detail');
 
 // Thanh toán
 Route::get('/payment', [PaymentController::class, 'showPaymentForm'])->name('payment.form');

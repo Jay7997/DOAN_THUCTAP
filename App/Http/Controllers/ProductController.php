@@ -34,15 +34,17 @@ class ProductController extends Controller
             return $this->hasValidImage($product);
         });
 
-        // Debug: Check for products without ID
-        foreach ($data['products'] as $index => $product) {
-            if (empty($product['id']) || $product['id'] === null) {
-                Log::warning('Product without ID found', [
-                    'index' => $index,
-                    'product' => array_keys($product),
-                    'title' => $product['tieude'] ?? 'No title'
-                ]);
-            }
+        // Debug: Check product IDs and their types
+        foreach (array_slice($data['products'], 0, 3) as $index => $product) {
+            Log::info('Product ID Debug', [
+                'index' => $index,
+                'id' => $product['id'] ?? 'NULL',
+                'id_type' => gettype($product['id'] ?? null),
+                'id_length' => strlen($product['id'] ?? ''),
+                'title' => $product['tieude'] ?? 'No title',
+                'is_numeric' => is_numeric($product['id'] ?? ''),
+                'contains_dash' => strpos($product['id'] ?? '', '-') !== false
+            ]);
         }
 
         return view('products.index', [
@@ -116,11 +118,25 @@ class ProductController extends Controller
     }
     public function show(Request $request, $id)
     {
+        Log::info('Product show request', [
+            'id' => $id,
+            'id_type' => gettype($id),
+            'is_numeric' => is_numeric($id),
+            'id_length' => strlen($id)
+        ]);
+
         // Lấy fallback danh mục từ Service
         $fallbackCategory = $this->productService->getCategoryFromProductId($id);
 
         // Gọi chi tiết sản phẩm
         $product = $this->productService->fetchProductDetail($id, $fallbackCategory);
+
+        Log::info('Product detail fetch result', [
+            'id' => $id,
+            'has_error' => isset($product['error']),
+            'error' => $product['error'] ?? null,
+            'product_title' => $product['tieude'] ?? 'No title'
+        ]);
 
         if (isset($product['error'])) {
             abort(404, 'Không tìm thấy sản phẩm.');
