@@ -220,10 +220,15 @@ $(document).ready(function () {
                     method: "GET",
                     dataType: "json"
                 }).done(function (r) {
-                    if (r && typeof r.sl !== "undefined") {
-                        const badge = document.querySelector(".cart-btn .badge");
-                        if (badge) badge.textContent = r.sl;
+                    let count = null;
+                    if (r) {
+                        if (Array.isArray(r.items)) count = r.items.length;
+                        else if (typeof r.sl !== "undefined") count = r.sl;
                     }
+                    const badge = document.querySelector(".cart-btn .badge");
+                    if (badge && count !== null) badge.textContent = count;
+                    // Navigate to cart to reflect latest external cart
+                    setTimeout(function(){ window.location.href = "/cart"; }, 300);
                 }).always(function () {});
             },
             error: function () {
