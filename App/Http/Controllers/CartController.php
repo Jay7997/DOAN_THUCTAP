@@ -171,9 +171,15 @@ class CartController extends Controller
         if ($cookie) {
             // Update external cart
             try {
-                $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upgiohang?IDPart={$productId}&id={$cookie}&id1={$quantity}";
+                $apiUrl = "https://demodienmay.125.atoz.vn/ww1/upgiohang.asp?IDPart={$productId}&id={$cookie}&id1={$quantity}";
                 $res = Http::withOptions(['verify' => false])->get($apiUrl);
-                if ($res->ok()) {
+                $body = $res->body();
+                $success = $res->ok();
+                if (!$success && is_string($body)) {
+                    $lower = mb_strtolower(strip_tags($body), 'UTF-8');
+                    $success = str_contains($lower, 'thành công') || str_contains($lower, 'cập nhật');
+                }
+                if ($success) {
                     return redirect()->route('cart.view')->with('success', 'Cập nhật giỏ hàng thành công');
                 }
             } catch (\Throwable $e) {
@@ -197,9 +203,16 @@ class CartController extends Controller
         if ($cookie) {
             // Remove from external cart
             try {
-                $apiUrl = "https://demodienmay.125.atoz.vn/ww1/removegiohang?IDPart={$productId}&id={$cookie}";
+                $apiUrl = "https://demodienmay.125.atoz.vn/ww1/removegiohang.asp?IDPart={$productId}&id={$cookie}";
                 $res = Http::withOptions(['verify' => false])->get($apiUrl);
-                if ($res->ok()) {
+                $body = $res->body();
+                $success = $res->ok();
+                if (!$success && is_string($body)) {
+                    // API có thể trả về JS object hoặc HTML có chữ 'thành công'/'xóa'
+                    $lower = mb_strtolower(strip_tags($body), 'UTF-8');
+                    $success = str_contains($lower, 'thành công') || str_contains($lower, 'xóa') || str_contains($lower, 'xoá');
+                }
+                if ($success) {
                     return redirect()->route('cart.view')->with('success', 'Đã xóa sản phẩm khỏi giỏ hàng');
                 }
             } catch (\Throwable $e) {
