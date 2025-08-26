@@ -214,22 +214,38 @@ $(document).ready(function () {
                     "Sản phẩm đã được thêm vào giỏ hàng!",
                     "success"
                 );
-                // Refresh badge count using current cart
-                $.ajax({
-                    url: "/api/proxy-cart-current",
-                    method: "GET",
-                    dataType: "json"
-                }).done(function (r) {
-                    let count = null;
-                    if (r) {
-                        if (Array.isArray(r.items)) count = r.items.length;
-                        else if (typeof r.sl !== "undefined") count = r.sl;
-                    }
-                    const badge = document.querySelector(".cart-btn .badge");
-                    if (badge && count !== null) badge.textContent = count;
-                    // Navigate to cart to reflect latest external cart
-                    setTimeout(function(){ window.location.href = "/cart"; }, 300);
-                }).always(function () {});
+                // Poll external cart until the item appears, then redirect
+                var tries = 0;
+                function pollAndRedirect() {
+                    $.ajax({
+                        url: "/api/proxy-cart-current",
+                        method: "GET",
+                        dataType: "json"
+                    }).done(function (r) {
+                        var hasItem = false;
+                        var count = null;
+                        if (r) {
+                            if (Array.isArray(r.items)) {
+                                count = r.items.length;
+                                hasItem = r.items.some(function(it){ return String(it.id) === String(productId); });
+                            } else if (typeof r.sl !== "undefined") {
+                                count = r.sl;
+                            }
+                        }
+                        var badge = document.querySelector(".cart-btn .badge");
+                        if (badge && count !== null) badge.textContent = count;
+                        if (hasItem || tries >= 4) {
+                            window.location.href = "/cart";
+                        } else {
+                            tries += 1;
+                            setTimeout(pollAndRedirect, 350);
+                        }
+                    }).fail(function(){
+                        // On failure, still attempt to redirect after a short delay
+                        setTimeout(function(){ window.location.href = "/cart"; }, 350);
+                    });
+                }
+                pollAndRedirect();
             },
             error: function () {
                 showNotification(
