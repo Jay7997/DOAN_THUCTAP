@@ -199,29 +199,31 @@ $(document).ready(function () {
         $(".quick-view-image img").attr("src", imageSrc);
     };
 
-    // Function to add product to cart
+    // Function to add product to cart (via proxy to external API)
     window.addToCart = function (productId) {
         $.ajax({
-            url: "/cart/add",
+            url: "/api/proxy-cart-add",
             method: "POST",
+            dataType: "json",
             data: {
-                product_id: productId,
-                quantity: 1,
-                _token: $('meta[name="csrf-token"]').attr("content"),
+                productId: productId
             },
-            success: function (response) {
-                if (response.success) {
-                    showNotification(
-                        "Sản phẩm đã được thêm vào giỏ hàng!",
-                        "success"
-                    );
-                    updateCartCount(response.cart_count);
-                } else {
-                    showNotification(
-                        response.message || "Có lỗi xảy ra!",
-                        "error"
-                    );
-                }
+            success: function () {
+                showNotification(
+                    "Sản phẩm đã được thêm vào giỏ hàng!",
+                    "success"
+                );
+                // Refresh badge count using current cart
+                $.ajax({
+                    url: "/api/proxy-cart-current",
+                    method: "GET",
+                    dataType: "json"
+                }).done(function (r) {
+                    if (r && typeof r.sl !== "undefined") {
+                        const badge = document.querySelector(".cart-btn .badge");
+                        if (badge) badge.textContent = r.sl;
+                    }
+                }).always(function () {});
             },
             error: function () {
                 showNotification(
