@@ -99,11 +99,36 @@
 <div class="demo-container">
     <h1>Demo API Giỏ hàng theo yêu cầu</h1>
 
+    <div class="card" style="border-color: #ff6b6b; background-color: #fff5f5;">
+        <div class="card-header" style="background-color: #ff6b6b; color: white;">
+            ⚠️ Lưu ý quan trọng về lỗi "Dữ liệu không tồn tại"
+        </div>
+        <div class="card-body">
+            <p><strong>Nếu bạn gặp lỗi:</strong> <code>{"thongbao": "Dữ liệu không tồn tại", "maloi": "1", "loi": "1234"}</code></p>
+            <p><strong>Nguyên nhân có thể:</strong></p>
+            <ul>
+                <li>Server API bên ngoài đang offline hoặc bảo trì</li>
+                <li>Endpoint URL không chính xác (.asp vs không .asp)</li>
+                <li>Cookie không hợp lệ hoặc đã hết hạn</li>
+                <li>Sản phẩm ID không tồn tại trong hệ thống</li>
+            </ul>
+            <p><strong>Cách khắc phục:</strong></p>
+            <ol>
+                <li>Click "Test API trực tiếp" để kiểm tra kết nối</li>
+                <li>Click "Lấy Cookie" để lấy cookie mới</li>
+                <li>Thử với ID sản phẩm khác (vd: 60001, 60002, 60003)</li>
+                <li>Xem logs trong console để debug chi tiết</li>
+            </ol>
+        </div>
+    </div>
+
     <div class="info-section">
         <h5>Thông tin cookie hiện tại:</h5>
         <p><strong>DathangMabaogia:</strong> <span id="cart-cookie">Chưa có</span></p>
         <p><strong>WishlistMabaogia:</strong> <span id="wishlist-cookie">Chưa có</span></p>
         <p><strong>Trạng thái đăng nhập:</strong> <span id="auth-status">{{ Auth::check() ? 'Đã đăng nhập' : 'Chưa đăng nhập' }}</span></p>
+        <button class="btn btn-primary" onclick="testDirectAPI()">Test API trực tiếp</button>
+        <button class="btn btn-primary" onclick="clearCookies()">Xóa Cookies</button>
     </div>
 
     <!-- Lấy Cookie -->
@@ -357,6 +382,29 @@ async function removeFromWishlist() {
     } catch (error) {
         document.getElementById('wishlist-result').textContent = 'Lỗi: ' + error.message;
     }
+}
+
+// Test API trực tiếp
+async function testDirectAPI() {
+    try {
+        const response = await fetch('/debug/test-api');
+        const data = await response.json();
+        console.log('Direct API test results:', data);
+        
+        // Hiển thị kết quả trong popup hoặc console
+        alert('Kết quả test API (xem console): ' + JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('Error testing direct API:', error);
+        alert('Lỗi khi test API: ' + error.message);
+    }
+}
+
+// Xóa cookies
+function clearCookies() {
+    document.cookie = 'DathangMabaogia=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'WishlistMabaogia=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    updateCookieDisplay();
+    alert('Đã xóa cookies');
 }
 
 // Cập nhật hiển thị cookie khi trang load

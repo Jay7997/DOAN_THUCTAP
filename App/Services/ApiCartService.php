@@ -16,27 +16,49 @@ class ApiCartService
     public function getCookies(): array
     {
         try {
-            $response = Http::withOptions(['verify' => false])
-                ->get($this->baseUrl . '/cookie.mabaogia');
+            // Thử cả 2 endpoint để tìm endpoint đúng
+            $endpoints = [
+                'https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia.asp',
+                'https://demodienmay.125.atoz.vn/ww1/cookie.mabaogia'
+            ];
             
-            $data = $response->json();
-            $cookies = [];
-            
-            if (is_array($data)) {
-                foreach ($data as $item) {
-                    if (isset($item['DathangMabaogia'])) {
-                        $cookies['DathangMabaogia'] = $item['DathangMabaogia'];
+            foreach ($endpoints as $endpoint) {
+                Log::info('Trying cookie endpoint', ['url' => $endpoint]);
+                
+                $response = Http::withOptions(['verify' => false])
+                    ->timeout(10)
+                    ->get($endpoint);
+                
+                Log::info('Cookie API response', [
+                    'url' => $endpoint,
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                
+                $data = $response->json();
+                
+                if ($data && is_array($data) && !isset($data['maloi'])) {
+                    $cookies = [];
+                    
+                    foreach ($data as $item) {
+                        if (isset($item['DathangMabaogia'])) {
+                            $cookies['DathangMabaogia'] = $item['DathangMabaogia'];
+                        }
+                        if (isset($item['WishlistMabaogia'])) {
+                            $cookies['WishlistMabaogia'] = $item['WishlistMabaogia'];
+                        }
                     }
-                    if (isset($item['WishlistMabaogia'])) {
-                        $cookies['WishlistMabaogia'] = $item['WishlistMabaogia'];
+                    
+                    if (!empty($cookies)) {
+                        return $cookies;
                     }
                 }
             }
             
-            return $cookies;
+            return ['error' => 'Không thể lấy cookie từ server'];
         } catch (\Exception $e) {
             Log::error('Error getting cookies', ['error' => $e->getMessage()]);
-            return [];
+            return ['error' => $e->getMessage()];
         }
     }
 
@@ -50,14 +72,41 @@ class ApiCartService
                 $cartCookie = request()->cookie('DathangMabaogia');
             }
 
+            if (!$cartCookie) {
+                return ['error' => 'Không có cookie DathangMabaogia. Vui lòng lấy cookie trước.'];
+            }
+
+            $url = 'https://demodienmay.125.atoz.vn/ww1/giohanghientai.asp';
+            
+            Log::info('Getting current cart', [
+                'url' => $url,
+                'cookie' => $cartCookie
+            ]);
+
             $response = Http::withOptions(['verify' => false])
                 ->withCookies(['DathangMabaogia' => $cartCookie], 'demodienmay.125.atoz.vn')
-                ->get($this->baseUrl . '/giohanghientai');
+                ->timeout(10)
+                ->get($url);
             
-            return $response->json() ?: [];
+            Log::info('Current cart response', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            
+            $data = $response->json();
+            
+            if (isset($data['maloi'])) {
+                return [
+                    'error' => $data['thongbao'] ?? 'Lỗi từ API',
+                    'maloi' => $data['maloi'],
+                    'details' => $data
+                ];
+            }
+            
+            return $data ?: [];
         } catch (\Exception $e) {
             Log::error('Error getting current cart', ['error' => $e->getMessage()]);
-            return [];
+            return ['error' => $e->getMessage()];
         }
     }
 
@@ -71,14 +120,41 @@ class ApiCartService
                 $wishlistCookie = request()->cookie('WishlistMabaogia');
             }
 
+            if (!$wishlistCookie) {
+                return ['error' => 'Không có cookie WishlistMabaogia. Vui lòng lấy cookie trước.'];
+            }
+
+            $url = 'https://demodienmay.125.atoz.vn/ww1/wishlisthientai.asp';
+            
+            Log::info('Getting current wishlist', [
+                'url' => $url,
+                'cookie' => $wishlistCookie
+            ]);
+
             $response = Http::withOptions(['verify' => false])
                 ->withCookies(['WishlistMabaogia' => $wishlistCookie], 'demodienmay.125.atoz.vn')
-                ->get($this->baseUrl . '/wishlisthientai');
+                ->timeout(10)
+                ->get($url);
             
-            return $response->json() ?: [];
+            Log::info('Current wishlist response', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            
+            $data = $response->json();
+            
+            if (isset($data['maloi'])) {
+                return [
+                    'error' => $data['thongbao'] ?? 'Lỗi từ API',
+                    'maloi' => $data['maloi'],
+                    'details' => $data
+                ];
+            }
+            
+            return $data ?: [];
         } catch (\Exception $e) {
             Log::error('Error getting current wishlist', ['error' => $e->getMessage()]);
-            return [];
+            return ['error' => $e->getMessage()];
         }
     }
 
@@ -90,26 +166,41 @@ class ApiCartService
         try {
             if ($userid && $pass) {
                 // Đã đăng nhập
-                $url = $this->baseUrl . "/save.addtocart?userid={$userid}&pass={$pass}&id={$productId}";
+                $url = "https://demodienmay.125.atoz.vn/ww1/save.addtocart.asp?userid={$userid}&pass={$pass}&id={$productId}";
             } else {
                 // Chưa đăng nhập
                 if (!$cartCookie) {
                     $cartCookie = request()->cookie('DathangMabaogia');
                 }
-                $url = $this->baseUrl . "/addgiohang?IDPart={$productId}&id={$cartCookie}";
+                
+                if (!$cartCookie) {
+                    return ['success' => false, 'message' => 'Không có cookie DathangMabaogia. Vui lòng lấy cookie trước.'];
+                }
+                
+                $url = "https://demodienmay.125.atoz.vn/ww1/addgiohang.asp?IDPart={$productId}&id={$cartCookie}";
             }
 
-            $response = Http::withOptions(['verify' => false])->get($url);
+            Log::info('Adding to cart', [
+                'url' => $url,
+                'productId' => $productId,
+                'hasAuth' => !empty($userid),
+                'hasCookie' => !empty($cartCookie)
+            ]);
+
+            $response = Http::withOptions(['verify' => false])
+                ->timeout(10)
+                ->get($url);
             
             Log::info('Add to cart API response', [
                 'url' => $url,
+                'status' => $response->status(),
                 'response' => $response->body()
             ]);
 
             return $this->parseResponse($response->body());
         } catch (\Exception $e) {
             Log::error('Error adding to cart', ['error' => $e->getMessage()]);
-            return ['success' => false, 'message' => 'Lỗi khi thêm vào giỏ hàng'];
+            return ['success' => false, 'message' => 'Lỗi khi thêm vào giỏ hàng: ' . $e->getMessage()];
         }
     }
 
