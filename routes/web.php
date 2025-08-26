@@ -173,10 +173,10 @@ Route::post('/api/proxy-cart-add', function (\Illuminate\Http\Request $request) 
     }
 
     if ($userid && $pass) {
-        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.addtocart?userid={$userid}&pass={$pass}&id={$productId}";
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/save.addtocart.asp?userid={$userid}&pass={$pass}&id={$productId}";
         $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
     } else {
-        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/addgiohang?IDPart={$productId}&id={$cartCookie}";
+        $apiUrl = "https://demodienmay.125.atoz.vn/ww1/addgiohang.asp?IDPart={$productId}&id={$cartCookie}";
         $res = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])->get($apiUrl);
     }
 
