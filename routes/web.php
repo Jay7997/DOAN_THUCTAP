@@ -93,6 +93,35 @@ Route::get('/debug/test-api', function () {
     return response()->json($results, 200, [], JSON_PRETTY_PRINT);
 })->name('debug.test.api');
 
+// Debug route để xem dữ liệu products
+Route::get('/debug/products', function () {
+    $productService = new \App\Services\ProductService();
+    $data = $productService->fetchData(10, 'product'); // Lấy 10 sản phẩm để test
+    
+    $debugInfo = [
+        'total_products' => count($data['products'] ?? []),
+        'sample_products' => array_slice($data['products'] ?? [], 0, 3), // 3 sản phẩm đầu
+        'products_without_id' => [],
+        'all_product_keys' => []
+    ];
+    
+    foreach ($data['products'] ?? [] as $index => $product) {
+        if (empty($product['id']) || $product['id'] === null) {
+            $debugInfo['products_without_id'][] = [
+                'index' => $index,
+                'keys' => array_keys($product),
+                'title' => $product['tieude'] ?? 'No title'
+            ];
+        }
+        
+        if ($index === 0) {
+            $debugInfo['all_product_keys'] = array_keys($product);
+        }
+    }
+    
+    return response()->json($debugInfo, 200, [], JSON_PRETTY_PRINT);
+})->name('debug.products');
+
 // Thanh toán
 Route::get('/payment', [PaymentController::class, 'showPaymentForm'])->name('payment.form');
 Route::post('/payment/process', [PaymentController::class, 'processPayment'])->name('payment.process');

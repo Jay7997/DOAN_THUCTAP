@@ -2,6 +2,22 @@
 
 @section('title', 'Công ty Chồi Xanh Media - Chuyên cung cấp máy tinh và thiết bị công nghệ ')
 
+@push('styles')
+<style>
+    .product-link-disabled {
+        color: #999 !important;
+        font-weight: 500;
+        cursor: not-allowed;
+    }
+    
+    .btn-quick-view:disabled,
+    .btn-wishlist:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container">
 
@@ -96,20 +112,32 @@
                         class="product-image lazyload"
                         loading="lazy">
                     <div class="product-overlay">
-                        <button class="btn-quick-view"
-                            data-product-id="{{ $product['id'] ?? $loop->index }}"
-                            data-product-title="{{ $product['tieude'] ?? 'Sản phẩm' }}">
-                            <i class="bi bi-eye"></i>
-                        </button>
+                        @if(!empty($product['id']) && $product['id'] !== null)
+                            <button class="btn-quick-view"
+                                data-product-id="{{ $product['id'] }}"
+                                data-product-title="{{ $product['tieude'] ?? 'Sản phẩm' }}">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        @else
+                            <button class="btn-quick-view" disabled title="Sản phẩm không có ID">
+                                <i class="bi bi-eye-slash"></i>
+                            </button>
+                        @endif
                     </div>
                 </div>
 
                 <div class="product-info">
                     <h3 class="product-title">
-                        <a href="{{ route('products.show', ['id' => $product['id'] ?? $loop->index]) }}"
-                            class="product-link">
-                            {{ $product['tieude'] ?? 'Tên sản phẩm' }}
-                        </a>
+                        @if(!empty($product['id']) && $product['id'] !== null)
+                            <a href="{{ route('products.show', ['id' => $product['id']]) }}"
+                                class="product-link">
+                                {{ $product['tieude'] ?? 'Tên sản phẩm' }}
+                            </a>
+                        @else
+                            <span class="product-link-disabled">
+                                {{ $product['tieude'] ?? 'Tên sản phẩm' }}
+                            </span>
+                        @endif
                     </h3>
 
                     <div class="product-meta">
@@ -144,14 +172,23 @@
                     </p>
 
                     <div class="product-actions">
-                        <button class="btn btn-primary btn-lg" onclick="addToCart('{{ $product['id'] }}', '{{ addslashes($product['tieude'] ?? '') }}', {{ $product['gia'] ?? 0 }}, '{{ $product['hinhdaidien'] ?? '' }}')">
-                                    🛒 Thêm vào giỏ hàng
-                                </button>
-                        <button class="btn-wishlist"
-                            data-product-id="{{ $product['id'] ?? $loop->index }}"
-                            title="Thêm vào yêu thích">
-                            <i class="bi bi-heart"></i>
-                        </button>
+                        @if(!empty($product['id']) && $product['id'] !== null)
+                            <button class="btn btn-primary btn-lg" onclick="addToCart('{{ $product['id'] }}', '{{ addslashes($product['tieude'] ?? '') }}', {{ $product['gia'] ?? 0 }}, '{{ $product['hinhdaidien'] ?? '' }}')">
+                                        🛒 Thêm vào giỏ hàng
+                                    </button>
+                            <button class="btn-wishlist"
+                                data-product-id="{{ $product['id'] }}"
+                                title="Thêm vào yêu thích">
+                                <i class="bi bi-heart"></i>
+                            </button>
+                        @else
+                            <button class="btn btn-secondary btn-lg" disabled title="Sản phẩm không có ID">
+                                ❌ Không thể đặt hàng
+                            </button>
+                            <button class="btn-wishlist" disabled title="Sản phẩm không có ID">
+                                <i class="bi bi-heart-slash"></i>
+                            </button>
+                        @endif
                     </div>
                 </div>
             </div>

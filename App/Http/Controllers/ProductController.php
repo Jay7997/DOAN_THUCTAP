@@ -34,6 +34,17 @@ class ProductController extends Controller
             return $this->hasValidImage($product);
         });
 
+        // Debug: Check for products without ID
+        foreach ($data['products'] as $index => $product) {
+            if (empty($product['id']) || $product['id'] === null) {
+                Log::warning('Product without ID found', [
+                    'index' => $index,
+                    'product' => array_keys($product),
+                    'title' => $product['tieude'] ?? 'No title'
+                ]);
+            }
+        }
+
         return view('products.index', [
             'data' => ['products' => array_values($data['products'])],
             'news' => collect(array_values($data['news'] ?? [])),
