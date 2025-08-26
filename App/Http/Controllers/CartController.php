@@ -213,7 +213,25 @@ class CartController extends Controller
                     $success = str_contains($lower, 'thành công') || str_contains($lower, 'xóa') || str_contains($lower, 'xoá');
                 }
                 if ($success) {
-                    return redirect()->route('cart.view')->with('success', 'Đã xóa sản phẩm khỏi giỏ hàng');
+                    // Verify removal by refetching current cart
+                    try {
+                        $check = Http::withOptions(['verify' => false])
+                            ->withHeaders(['Cache-Control' => 'no-cache'])
+                            ->withCookies(['DathangMabaogia' => $cookie], 'demodienmay.125.atoz.vn')
+                            ->get('https://demodienmay.125.atoz.vn/ww1/giohanghientai.asp?ts=' . time());
+                        $json = $check->json();
+                        $still = false;
+                        if (!empty($json['items'])) {
+                            foreach ($json['items'] as $it) {
+                                if ((string)($it['id'] ?? '') === (string)$productId) { $still = true; break; }
+                            }
+                        }
+                        if (!$still) {
+                            return redirect()->route('cart.view')->with('success', 'Đã xóa sản phẩm khỏi giỏ hàng');
+                        }
+                    } catch (\Throwable $e) {
+                        // ignore and fall through
+                    }
                 }
             } catch (\Throwable $e) {
                 Log::warning('External cart remove failed', ['error' => $e->getMessage()]);
