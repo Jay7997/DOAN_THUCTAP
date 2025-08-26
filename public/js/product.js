@@ -136,9 +136,9 @@ $(document).ready(function () {
                 </div>
                 
                 <div class="quick-view-actions">
-                    <button class="btn btn-primary btn-add-cart" onclick="addToCart(${
+                    <button class="btn btn-primary btn-add-cart" onclick="addToCart(
                         product.id
-                    })">
+                    )">
                         <i class="bi bi-cart-plus"></i> Thêm vào giỏ hàng
                     </button>
                     <a href="/products/${
